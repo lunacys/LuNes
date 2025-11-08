@@ -10,11 +10,11 @@ public partial class Cpu6502
     {
         Fetch();
         
-        ushort temp = (ushort)((ushort)A + (ushort)Fetched + (ushort)GetFlag(Flags.CarryBit));
+        ushort temp = (ushort)(A + Fetched + GetFlag(Flags.CarryBit));
         
         SetFlag(Flags.CarryBit, temp > 255);
         SetFlag(Flags.Zero, (temp & 0x00FF) == 0);
-        SetFlag(Flags.Overflow, (byte)((~((ushort) A ^ (ushort) Fetched) & ((ushort) A ^ (ushort) temp)) & 0x0080));
+        SetFlag(Flags.Overflow, (byte)((~(A ^ Fetched) & (A ^ temp)) & 0x0080));
         SetFlag(Flags.Negative, (byte)(temp & 0x80));
 
         A = (byte)(temp & 0x00FF);

@@ -77,10 +77,10 @@ public partial class Cpu6502
 
     public void ConnectBus(Bus bus) => _bus = bus;
 
-    public byte Read(ushort address) => _bus?.Read(address) ?? 0;
+    public byte Read(ushort address) => _bus?.CpuRead(address) ?? 0;
     public byte Read(int address) => Read((ushort)address);
 
-    public void Write(ushort address, byte data) => _bus?.Write(address, data);
+    public void Write(ushort address, byte data) => _bus?.CpuWrite(address, data);
     public void Write(int address, byte data) => Write((ushort)address, data);
     public void Write(ushort address, int data) => Write(address, (byte)data);
     public void Write(int address, int data) => Write((ushort)address, data);
@@ -217,7 +217,7 @@ public partial class Cpu6502
 
         var sInst = $"${Hex((uint)addr, 4)}: ";
 
-        byte opcode = _bus?.Read(addr, true) ?? 0;
+        byte opcode = _bus?.CpuRead(addr, true) ?? 0;
         addr++;
         sInst += Lookup[opcode].Name + " ";
 
@@ -228,80 +228,80 @@ public partial class Cpu6502
         }
         else if (addrMode == Imm)
         {
-            value = _bus?.Read(addr, true) ?? 0;
+            value = _bus?.CpuRead(addr, true) ?? 0;
             addr++;
             sInst += "#$" + Hex(value, 2) + " {IMM}";
         }
         else if (addrMode == Zp0)
         {
-            lo = _bus?.Read(addr, true) ?? 0;
+            lo = _bus?.CpuRead(addr, true) ?? 0;
             addr++;
             hi = 0x00;
             sInst += "$" + Hex(lo, 2) + " {ZP0}";
         }
         else if (addrMode == Zpx)
         {
-            lo = _bus?.Read(addr, true) ?? 0;
+            lo = _bus?.CpuRead(addr, true) ?? 0;
             addr++;
             hi = 0x00;
             sInst += "$" + Hex(lo, 2) + ", X {ZPX}";
         }
         else if (addrMode == Zpy)
         {
-            lo = _bus?.Read(addr, true) ?? 0;
+            lo = _bus?.CpuRead(addr, true) ?? 0;
             addr++;
             hi = 0x00;
             sInst += "$" + Hex(lo, 2) + ", Y {ZPY}";
         }
         else if (addrMode == Izx)
         {
-            lo = _bus?.Read(addr, true) ?? 0;
+            lo = _bus?.CpuRead(addr, true) ?? 0;
             addr++;
             hi = 0x00;
             sInst += "($" + Hex(lo, 2) + ", X) {IZX}";
         }
         else if (addrMode == Izy)
         {
-            lo = _bus?.Read(addr, true) ?? 0;
+            lo = _bus?.CpuRead(addr, true) ?? 0;
             addr++;
             hi = 0x00;
             sInst += "($" + Hex(lo, 2) + "), Y {IZY}";
         }
         else if (addrMode == Abs)
         {
-            lo = _bus?.Read(addr, true) ?? 0;
+            lo = _bus?.CpuRead(addr, true) ?? 0;
             addr++;
-            hi = _bus?.Read(addr, true) ?? 0;
+            hi = _bus?.CpuRead(addr, true) ?? 0;
             addr++;
             sInst += "$" + Hex((ushort)((hi << 8) | lo), 4) + " {ABS}";
         }
         else if (addrMode == Abx)
         {
-            lo = _bus?.Read(addr, true) ?? 0;
+            lo = _bus?.CpuRead(addr, true) ?? 0;
             addr++;
-            hi = _bus?.Read(addr, true) ?? 0;
+            hi = _bus?.CpuRead(addr, true) ?? 0;
             addr++;
             sInst += "$" + Hex((ushort)((hi << 8) | lo), 4) + ", X {ABX}";
         }
         else if (addrMode == Aby)
         {
-            lo = _bus?.Read(addr, true) ?? 0;
+            lo = _bus?.CpuRead(addr, true) ?? 0;
             addr++;
-            hi = _bus?.Read(addr, true) ?? 0;
+            hi = _bus?.CpuRead(addr, true) ?? 0;
             addr++;
             sInst += "$" + Hex((ushort)((hi << 8) | lo), 4) + ", Y {ABY}";
         }
         else if (addrMode == Ind)
         {
-            lo = _bus?.Read(addr, true) ?? 0;
+            lo = _bus?.CpuRead(addr, true) ?? 0;
             addr++;
-            hi = _bus?.Read(addr, true) ?? 0;
+            hi = _bus?.CpuRead(addr, true) ?? 0;
             addr++;
             sInst += "($" + Hex((ushort)((hi << 8) | lo), 4) + ") {IND}";
         }
         else if (addrMode == Rel)
         {
-            value = _bus?.Read(addr, true) ?? 0;
+            value = _bus?.CpuRead(addr, true) ?? 0;
             addr++;
             // Handle relative address calculation (accounting for signed byte)
             short offset = (short)(sbyte)value; // Sign-extend the byte
