@@ -14,7 +14,8 @@ static class Program
     public static void Main(string[] args)
     {
         Raylib.InitWindow(2000, 1440, "NES Emulator. Space - Step Instruction. R - Reset. Q - IRQ. W - NMI");
-        Raylib.SetWindowState(ConfigFlags.VSyncHint);
+        //Raylib.SetWindowState(ConfigFlags.VSyncHint);
+        Raylib.SetTargetFPS(160);
         var s = Raylib.GetWindowScaleDPI();
         //rlImGui.Setup();
         
@@ -35,6 +36,9 @@ static class Program
         _mapAsm = _bus.Cpu.Disassemble(0x0000, 0xFFFF);
         
         _bus.Cpu.Reset();
+        //_bus.Cpu.Pc = 0x0400;
+
+        bool run = false;
 
         while (!Raylib.WindowShouldClose())
         {
@@ -48,7 +52,7 @@ static class Program
                     _bus.Cpu.Clock();
                 } while (!_bus.Cpu.IsComplete());
             }
-
+            
             if (Raylib.IsKeyPressed(KeyboardKey.R)) 
                 _bus.Cpu.Reset();
             
@@ -57,6 +61,17 @@ static class Program
             
             if (Raylib.IsKeyPressed(KeyboardKey.W))
                 _bus.Cpu.Nmi();
+
+            if (Raylib.IsKeyPressed(KeyboardKey.A))
+                run = !run;
+
+            if (run)
+            {
+                do
+                {
+                    _bus.Cpu.Clock();
+                } while (!_bus.Cpu.IsComplete());
+            }
             
             DrawRam(16, 16, 0x0000, 16, 16);
             DrawRam(16, 700, 0x8000, 16, 16);
