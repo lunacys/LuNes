@@ -82,7 +82,7 @@ public partial class Cpu6502
 
     public void Write(ushort address, byte data) => _bus?.Write(address, data);
     public void Write(int address, byte data) => Write((ushort)address, data);
-    public void Write(ushort address, int data) => Write(address, data);
+    public void Write(ushort address, int data) => Write(address, (byte)data);
     public void Write(int address, int data) => Write((ushort)address, data);
 
     public void Clock()
