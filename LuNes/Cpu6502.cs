@@ -40,7 +40,7 @@ public partial class Cpu6502
         Negative = 1 << 7,
     }
     
-    private Bus? _bus;
+    private IBus? _bus;
 
     /// <summary>
     /// Status Register
@@ -75,7 +75,7 @@ public partial class Cpu6502
 
     public int ClockCount = 0;
 
-    public void ConnectBus(Bus bus) => _bus = bus;
+    public void ConnectBus(IBus bus) => _bus = bus;
 
     public byte Read(ushort address) => _bus?.CpuRead(address) ?? 0;
     public byte Read(int address) => Read((ushort)address);
@@ -128,6 +128,9 @@ public partial class Cpu6502
         Fetched = 0;
 
         Cycles = 8;
+
+        _isWaitingForInterrupt = false;
+        _isStopped = false;
     }
 
     /// <summary>

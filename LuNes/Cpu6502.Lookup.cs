@@ -89,6 +89,43 @@ public partial class Cpu6502
             /* 0xF8 */ I("SED", Sed, Imp, 2), I("SBC", Sbc, Aby, 4), I("NOP", Nop, Imp, 2), I("???", Xxx, Imp, 7),
             /* 0xFC */ I("???", Nop, Imp, 4), I("SBC", Sbc, Abx, 4), I("INC", Inc, Abx, 7), I("???", Xxx, Imp, 7)
         ]);
+        
+        Initialize65C02Extensions();
+    }
+    
+    private void Initialize65C02Extensions()
+    {
+        // BRA - Branch Always (0x80)
+        Lookup[0x80] = new Instruction("BRA", Bra, Rel, 2);
+    
+        // STZ - Store Zero (0x64, 0x74, 0x9C, 0x9E)
+        Lookup[0x64] = new Instruction("STZ", Stz, Zp0, 3);
+        Lookup[0x74] = new Instruction("STZ", Stz, Zpx, 4);
+        Lookup[0x9C] = new Instruction("STZ", Stz, Abs, 4);
+        Lookup[0x9E] = new Instruction("STZ", Stz, Abx, 5);
+    
+        // PHX/PLX/PHY/PLY
+        Lookup[0xDA] = new Instruction("PHX", Phx, Imp, 3);
+        Lookup[0xFA] = new Instruction("PLX", Plx, Imp, 4);
+        Lookup[0x5A] = new Instruction("PHY", Phy, Imp, 3);
+        Lookup[0x7A] = new Instruction("PLY", Ply, Imp, 4);
+    
+        // Additional NOPs (W65C02 has more one-byte NOPs)
+        Lookup[0x1A] = new Instruction("NOP", Nop, Imp, 2);
+        Lookup[0x3A] = new Instruction("NOP", Nop, Imp, 2);
+        Lookup[0x5A] = new Instruction("NOP", Nop, Imp, 2); // Actually PHY
+        Lookup[0x7A] = new Instruction("NOP", Nop, Imp, 2); // Actually PLY
+        Lookup[0xDA] = new Instruction("NOP", Nop, Imp, 2); // Actually PHX
+        Lookup[0xFA] = new Instruction("NOP", Nop, Imp, 2); // Actually PLX
+    
+        // BIT immediate (0x89)
+        Lookup[0x89] = new Instruction("BIT", BitImm, Imm, 2);
+    
+        // WAI - Wait for Interrupt (0xCB)
+        Lookup[0xCB] = new Instruction("WAI", Wai, Imp, 3);
+    
+        // STP - Stop (0xDB)
+        Lookup[0xDB] = new Instruction("STP", Stp, Imp, 3);
     }
 
     private Instruction I(string name, Operate operation, AddressMode addressMode, byte cycles)

@@ -1,6 +1,6 @@
 namespace LuNes;
 
-public class Bus
+public class NesBus : IBus
 {
     //public byte[] CpuRam = new byte[2048];
     public byte[] CpuRam = new byte[64 * 1024];
@@ -10,7 +10,7 @@ public class Bus
 
     private uint _systemClockCounter = 0;
 
-    public Bus(Ppu2C02 ppu)
+    public NesBus(Ppu2C02 ppu)
     {
         Cpu = new Cpu6502();
         Cpu.ConnectBus(this);
@@ -18,7 +18,7 @@ public class Bus
         Ppu = ppu;
     }
 
-    public Bus() : this(new Ppu2C02())
+    public NesBus() : this(new Ppu2C02())
     { }
 
     public void InsertCartridge(Cartridge cartridge)
@@ -42,6 +42,12 @@ public class Bus
             Cpu.Clock();
         }
 
+        /*if (Ppu.Nmi)
+        {
+            Ppu.Nmi = false;
+            Cpu.Nmi();
+        }*/
+
         _systemClockCounter++;
     }
     
@@ -49,7 +55,7 @@ public class Bus
     {
         byte data = 0x00;
 
-        if (Cartridge.CpuRead(address, ref data))
+        if (Cartridge?.CpuRead(address, ref data) == true)
         {
             
         }
