@@ -1,4 +1,5 @@
 using System.Numerics;
+using LuNes.Cpu;
 using Raylib_cs;
 
 namespace LuNes.Client.Ui.Components;
@@ -9,7 +10,7 @@ public class CpuStatus : IComponent
     private readonly Font _font;
 
     private Rectangle _bounds;
-    private const int FontSize = 32;
+    private const int FontSize = 36;
 
     public bool IsVisible { get; set; } = true;
 

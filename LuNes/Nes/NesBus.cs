@@ -1,3 +1,5 @@
+using LuNes.Cpu;
+
 namespace LuNes;
 
 public class NesBus : IBus

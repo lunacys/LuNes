@@ -1,4 +1,4 @@
-namespace LuNes;
+namespace LuNes.Cpu;
 
 public partial class Cpu6502
 {

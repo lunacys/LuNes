@@ -32,12 +32,14 @@ public class Startup : IDisposable
         //ramViewer = _componentManager.Register(new RamViewer(_computer.Bus, _mainFont));
         _componentManager.Register(new CpuStatus(_computer.Bus, _mainFont));
         _componentManager.Register(new DeviceViewer(_computer, _mainFont));
-        var dasm = _componentManager.Register(new DisassemblyViewer(_computer.Bus));
+        //var dasm = _componentManager.Register(new DisassemblyViewer(_computer.Bus));
+        var dasm2 = _componentManager.Register(new DisassemblyViewerTable(_computer.Bus));
         _componentManager.Register(new Profiler(_emulator));
         var romLoader = _componentManager.Register(new RomLoader(bytes =>
         {
             _computer.Rom.Load(bytes);
-            dasm.UpdateDisassembly();
+            //dasm.UpdateDisassembly();
+            dasm2.UpdateDisassembly();
             _computer.Bus.Reset();
             return true;
         }));
@@ -50,7 +52,8 @@ public class Startup : IDisposable
             () => _emulator.ToggleEmulation(),
             () => IsEmulationRunning));
 
-        dasm.UpdateDisassembly();
+        //dasm.UpdateDisassembly();
+        dasm2.UpdateDisassembly();
 
         _emulator.Start();
     }

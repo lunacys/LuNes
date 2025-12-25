@@ -1,4 +1,4 @@
-namespace LuNes;
+namespace LuNes.Cpu;
 
 public partial class Cpu6502
 {
@@ -95,39 +95,56 @@ public partial class Cpu6502
     
     private void Initialize65C02Extensions()
     {
-        // BRA - Branch Always (0x80)
-        Lookup[0x80] = new Instruction("BRA", Bra, Rel, 2);
+        // BRA - Branch Always
+        Lookup[0x80] = I("BRA", Bra, Rel, 2);
     
-        // STZ - Store Zero (0x64, 0x74, 0x9C, 0x9E)
-        Lookup[0x64] = new Instruction("STZ", Stz, Zp0, 3);
-        Lookup[0x74] = new Instruction("STZ", Stz, Zpx, 4);
-        Lookup[0x9C] = new Instruction("STZ", Stz, Abs, 4);
-        Lookup[0x9E] = new Instruction("STZ", Stz, Abx, 5);
+        // STZ - Store Zero
+        Lookup[0x64] = I("STZ", Stz, Zp0, 3);
+        Lookup[0x74] = I("STZ", Stz, Zpx, 4);
+        Lookup[0x9C] = I("STZ", Stz, Abs, 4);
+        Lookup[0x9E] = I("STZ", Stz, Abx, 5);
     
         // PHX/PLX/PHY/PLY
-        Lookup[0xDA] = new Instruction("PHX", Phx, Imp, 3);
-        Lookup[0xFA] = new Instruction("PLX", Plx, Imp, 4);
-        Lookup[0x5A] = new Instruction("PHY", Phy, Imp, 3);
-        Lookup[0x7A] = new Instruction("PLY", Ply, Imp, 4);
+        Lookup[0xDA] = I("PHX", Phx, Imp, 3);
+        Lookup[0xFA] = I("PLX", Plx, Imp, 4);
+        Lookup[0x5A] = I("PHY", Phy, Imp, 3);
+        Lookup[0x7A] = I("PLY", Ply, Imp, 4);
     
-        // Additional NOPs (W65C02 has more one-byte NOPs)
-        Lookup[0x1A] = new Instruction("NOP", Nop, Imp, 2);
-        Lookup[0x3A] = new Instruction("NOP", Nop, Imp, 2);
-        Lookup[0x5A] = new Instruction("NOP", Nop, Imp, 2); // Actually PHY
-        Lookup[0x7A] = new Instruction("NOP", Nop, Imp, 2); // Actually PLY
-        Lookup[0xDA] = new Instruction("NOP", Nop, Imp, 2); // Actually PHX
-        Lookup[0xFA] = new Instruction("NOP", Nop, Imp, 2); // Actually PLX
+        // Additional NOPs
+        Lookup[0x1A] = I("NOP", Nop, Imp, 2);
+        Lookup[0x3A] = I("NOP", Nop, Imp, 2);
+        //Lookup[0x5A] = I("NOP", Nop, Imp, 2); // PHY
+        //Lookup[0x7A] = I("NOP", Nop, Imp, 2); // PLY
+        //Lookup[0xDA] = I("NOP", Nop, Imp, 2); // PHX
+        //Lookup[0xFA] = I("NOP", Nop, Imp, 2); // PLX
     
-        // BIT immediate (0x89)
-        Lookup[0x89] = new Instruction("BIT", BitImm, Imm, 2);
+        // BIT immediate
+        Lookup[0x89] = I("BIT", BitImm, Imm, 2);
     
-        // WAI - Wait for Interrupt (0xCB)
-        Lookup[0xCB] = new Instruction("WAI", Wai, Imp, 3);
+        // WAI - Wait for Interrupt
+        Lookup[0xCB] = I("WAI", Wai, Imp, 3);
     
-        // STP - Stop (0xDB)
-        Lookup[0xDB] = new Instruction("STP", Stp, Imp, 3);
+        // STP - Stop
+        Lookup[0xDB] = I("STP", Stp, Imp, 3);
     }
 
     private Instruction I(string name, Operate operation, AddressMode addressMode, byte cycles)
-        => new (name, operation, addressMode, cycles);
+        => new (name, operation, addressMode, cycles, GetAddressModeEnum(addressMode));
+
+    private AddressModeEnum GetAddressModeEnum(AddressMode mode)
+    {
+        if (mode == Imp) return AddressModeEnum.Imp;
+        if (mode == Imm) return AddressModeEnum.Imm;
+        if (mode == Zp0) return AddressModeEnum.Zp0;
+        if (mode == Zpx) return AddressModeEnum.Zpx;
+        if (mode == Zpy) return AddressModeEnum.Zpy;
+        if (mode == Rel) return AddressModeEnum.Rel;
+        if (mode == Abs) return AddressModeEnum.Abs;
+        if (mode == Abx) return AddressModeEnum.Abx;
+        if (mode == Aby) return AddressModeEnum.Aby;
+        if (mode == Ind) return AddressModeEnum.Ind;
+        if (mode == Izx) return AddressModeEnum.Izx;
+        if (mode == Izy) return AddressModeEnum.Izy;
+        return AddressModeEnum.Unknown;
+    }
 }

@@ -46,7 +46,7 @@ static class Program
                 rlImGui.Begin();
 
                 startup.Draw();
-                ImGui.ShowDemoWindow();
+                //ImGui.ShowDemoWindow();
                 rlImGui.End();
 
                 Raylib.EndDrawing();

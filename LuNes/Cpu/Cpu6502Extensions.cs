@@ -1,4 +1,4 @@
-namespace LuNes;
+namespace LuNes.Cpu;
 
 public static class Cpu6502Extensions
 {
