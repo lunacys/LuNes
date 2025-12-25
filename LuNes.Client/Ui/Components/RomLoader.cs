@@ -9,7 +9,7 @@ public class RomLoader : IComponent
     private string[] _romFiles = Array.Empty<string>();
     private string _selectedFile = "";
     public bool ShowFileDialog;
-    
+
     public bool IsVisible { get; set; } = true;
 
     public RomLoader(Func<byte[], bool> onRomLoaded)
@@ -28,7 +28,9 @@ public class RomLoader : IComponent
         }
     }
 
-    public void Update(float deltaTime) { }
+    public void Update(float deltaTime)
+    {
+    }
 
     public void Draw()
     {
@@ -37,19 +39,19 @@ public class RomLoader : IComponent
             ImGui.OpenPopup("Load ROM File");
             ShowFileDialog = false;
         }
-        
+
         if (ImGui.BeginPopupModal("Load ROM File"))
         {
             if (ImGui.Button("Refresh"))
             {
                 RefreshFileList();
             }
-            
+
             ImGui.SameLine();
             ImGui.Text($"Directory: {_currentDirectory}");
-            
+
             ImGui.BeginChild("##FileList", new System.Numerics.Vector2(400, 300));
-            
+
             foreach (var file in _romFiles)
             {
                 if (ImGui.Selectable(file, _selectedFile == file))
@@ -57,9 +59,9 @@ public class RomLoader : IComponent
                     _selectedFile = file;
                 }
             }
-            
+
             ImGui.EndChild();
-            
+
             if (ImGui.Button("Load") && !string.IsNullOrEmpty(_selectedFile))
             {
                 string fullPath = Path.Combine(_currentDirectory, _selectedFile);
@@ -75,18 +77,21 @@ public class RomLoader : IComponent
                         Console.WriteLine($"Error loading ROM: {ex.Message}");
                     }
                 }
+
                 ImGui.CloseCurrentPopup();
             }
-            
+
             ImGui.SameLine();
             if (ImGui.Button("Cancel"))
             {
                 ImGui.CloseCurrentPopup();
             }
-            
+
             ImGui.EndPopup();
         }
     }
 
-    public void Resize(int width, int height) { }
+    public void Resize(int width, int height)
+    {
+    }
 }

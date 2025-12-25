@@ -7,13 +7,13 @@ public sealed class TimeData
     private int _sampleCount;
     private int _nextIndex;
     private int _recalculateCounter;
-    
+
     private readonly Lock _lock = new();
-    
+
     public string Context { get; }
     public TimeSpan LastTime { get; private set; }
     public int Capacity => _samples.Length;
-    
+
     public double Mean { get; private set; }
     public double Min { get; private set; } = double.MaxValue;
     public double Max { get; private set; } = double.MinValue;
@@ -32,16 +32,16 @@ public sealed class TimeData
         {
             LastTime = duration;
             var milliseconds = duration.TotalMilliseconds;
-            
+
             if (milliseconds < Min) Min = milliseconds;
             if (milliseconds > Max) Max = milliseconds;
-            
+
             _samples[_nextIndex] = milliseconds;
             _nextIndex = (_nextIndex + 1) % _samples.Length;
-            
+
             if (_sampleCount < _samples.Length)
                 _sampleCount++;
-            
+
             if (++_recalculateCounter >= _recalculateInterval)
             {
                 Recalculate();
@@ -61,14 +61,14 @@ public sealed class TimeData
 
         double sum = 0;
         double sumSquares = 0;
-        
+
         for (int i = 0; i < _sampleCount; i++)
         {
             double value = _samples[i];
             sum += value;
             sumSquares += value * value;
         }
-        
+
         Mean = sum / _sampleCount;
         double variance = (sumSquares / _sampleCount) - (Mean * Mean);
         StandardDeviation = Math.Sqrt(Math.Max(0, variance));

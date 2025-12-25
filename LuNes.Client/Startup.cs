@@ -8,23 +8,23 @@ namespace LuNes.Client;
 public class Startup : IDisposable
 {
     private Font _mainFont;
-    
+
     private Computer _computer;
     private ComponentManager _componentManager;
     private BackgroundEmulator _emulator;
-    
+
     private bool _isDisposed;
 
     public bool IsEmulationRunning => _emulator.RunEmulation;
-    
+
     public Startup()
     {
         _mainFont = Raylib.LoadFontEx(Path.Combine("Content", "Fonts", "FiraCode-Regular.ttf"), 32, null, 0);
-        
+
         var initialRom = LoadRom("Content/ROMs/tests/1_basic_instructions.bin");
         _computer = new Computer(initialRom);
         _emulator = new BackgroundEmulator(_computer);
-        
+
         _componentManager = new ComponentManager();
 
         _componentManager.Register(new EmulatorSettings(_emulator));
@@ -41,17 +41,17 @@ public class Startup : IDisposable
             _computer.Bus.Reset();
             return true;
         }));
-        
+
         _componentManager.Register(new MainMenuBar(
-            romLoader, 
+            romLoader,
             () => true,
-            () => _emulator.Step(), 
-            () => _emulator.Post(() => _computer.Bus.Reset()), 
+            () => _emulator.Step(),
+            () => _emulator.Post(() => _computer.Bus.Reset()),
             () => _emulator.ToggleEmulation(),
             () => IsEmulationRunning));
 
         dasm.UpdateDisassembly();
-        
+
         _emulator.Start();
     }
 
@@ -69,7 +69,7 @@ public class Startup : IDisposable
         {
             TimeManager.TimeAction(() => _emulator.Step(), "Emulator.Step");
         }
-        
+
         if (Raylib.IsKeyPressed(KeyboardKey.R))
         {
             _emulator.Post(() =>
@@ -83,7 +83,7 @@ public class Startup : IDisposable
                 TimeManager.TimeAction(() => _computer.Bus.Cpu.Irq(), "Computer.Cpu.Irq")
             );
         }
-            
+
         if (Raylib.IsKeyPressed(KeyboardKey.W))
         {
             _emulator.Post(() =>
@@ -93,7 +93,7 @@ public class Startup : IDisposable
 
         if (Raylib.IsKeyPressed(KeyboardKey.A))
             _emulator.ToggleEmulation();
-        
+
         TimeManager.TimeAction(() => _componentManager.Update(dt), "ComponentManager.Update");
     }
 
@@ -101,7 +101,7 @@ public class Startup : IDisposable
     {
         TimeManager.TimeAction(() => _componentManager.Draw(), "ComponentManager.Draw");
     }
-    
+
     public void Dispose()
     {
         Dispose(true);
@@ -116,7 +116,7 @@ public class Startup : IDisposable
             {
                 _emulator?.Dispose();
             }
-            
+
             _isDisposed = true;
         }
     }

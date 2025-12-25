@@ -15,17 +15,18 @@ public unsafe class MemoryEditor : IComponent
     private byte[] _addrInput = new byte[32];
     private bool _allowEdits = true;
     private string _windowTitle = "Memory Editor";
-    
+
     // Cache for the window ID to ensure unique ImGui IDs
     private string _windowId;
     private int _instanceId;
     private static int _nextInstanceId = 0;
-    
+
     public bool IsVisible { get; set; } = true;
-    public bool AllowEdits 
-    { 
-        get => _allowEdits; 
-        set => _allowEdits = value; 
+
+    public bool AllowEdits
+    {
+        get => _allowEdits;
+        set => _allowEdits = value;
     }
 
     public MemoryEditor(SimpleBus bus, string title = "RAM Viewer")
@@ -49,6 +50,7 @@ public unsafe class MemoryEditor : IComponent
             result = 0;
             return false;
         }
+
         return int.TryParse(input, NumberStyles.HexNumber, CultureInfo.CurrentCulture, out result);
     }
 
@@ -61,7 +63,9 @@ public unsafe class MemoryEditor : IComponent
         }
     }
 
-    public void Update(float deltaTime) { }
+    public void Update(float deltaTime)
+    {
+    }
 
     public void Draw()
     {
@@ -74,7 +78,7 @@ public unsafe class MemoryEditor : IComponent
 
         var memData = _bus.Ram;
         int memSize = memData.Length;
-        int baseDisplayAddr = 0x0000; 
+        int baseDisplayAddr = 0x0000;
 
         float lineHeight = ImGui.GetTextLineHeight();
         int lineTotalCount = (memSize + _rows - 1) / _rows;
@@ -94,7 +98,7 @@ public unsafe class MemoryEditor : IComponent
 
         var clipper = ImGuiNative.ImGuiListClipper_ImGuiListClipper();
         ImGuiNative.ImGuiListClipper_Begin(clipper, lineTotalCount, lineHeight);
-        
+
         while (ImGuiNative.ImGuiListClipper_Step(clipper) != 0)
         {
             for (int line_i = (*clipper).DisplayStart; line_i < (*clipper).DisplayEnd; line_i++)
@@ -102,7 +106,7 @@ public unsafe class MemoryEditor : IComponent
                 int addr = line_i * _rows;
                 ImGui.Text($"${FixedHex(baseDisplayAddr + addr, addrDigitsCount)}: ");
                 ImGui.SameLine();
-    
+
                 ImGui.PushStyleColor(ImGuiCol.Text, new Vector4(1, 1, 0, 1));
                 // Draw Hexadecimal
                 float lineStartX = ImGui.GetCursorPosX();
@@ -131,18 +135,18 @@ public unsafe class MemoryEditor : IComponent
                             ReplaceChars(_dataInput, FixedHex(memData[addr], 2));
                             ReplaceChars(_addrInput, FixedHex(baseDisplayAddr + addr, addrDigitsCount));
                         }
-                        
+
                         ImGui.PushItemWidth(ImGui.CalcTextSize("FF").X);
 
-                        var flags = ImGuiInputTextFlags.CharsHexadecimal | 
-                                    ImGuiInputTextFlags.EnterReturnsTrue | 
-                                    ImGuiInputTextFlags.AutoSelectAll | 
-                                    ImGuiInputTextFlags.NoHorizontalScroll | 
+                        var flags = ImGuiInputTextFlags.CharsHexadecimal |
+                                    ImGuiInputTextFlags.EnterReturnsTrue |
+                                    ImGuiInputTextFlags.AutoSelectAll |
+                                    ImGuiInputTextFlags.NoHorizontalScroll |
                                     ImGuiInputTextFlags.CallbackAlways;
 
                         var d = _dataInput[0].ToString();
-                        if (ImGui.InputText("##data", ref d, (uint)_dataInput.Length, flags, 
-                            callback, (IntPtr)(&cursorPos)))
+                        if (ImGui.InputText("##data", ref d, (uint)_dataInput.Length, flags,
+                                callback, (IntPtr)(&cursorPos)))
                         {
                             dataWrite = true;
                         }
@@ -153,10 +157,10 @@ public unsafe class MemoryEditor : IComponent
 
                         _dataEditingTakeFocus = false;
                         ImGui.PopItemWidth();
-                        
+
                         if (cursorPos >= 2)
                             dataWrite = true;
-                            
+
                         if (dataWrite && _allowEdits)
                         {
                             if (TryHexParse(_dataInput, out int data))
@@ -166,7 +170,7 @@ public unsafe class MemoryEditor : IComponent
                                 _dataEditingTakeFocus = true;
                             }
                         }
-                        
+
                         ImGui.PopID();
                     }
                     else
@@ -179,11 +183,11 @@ public unsafe class MemoryEditor : IComponent
                         }
                     }
                 }
-                
+
                 ImGui.PopStyleColor();
 
                 ImGui.SameLine(lineStartX + cellWidth * _rows + glyphWidth * 2);
-                
+
                 // Draw ASCII values
                 addr = line_i * _rows;
                 var asciiVal = new StringBuilder(2 + _rows);
@@ -193,10 +197,11 @@ public unsafe class MemoryEditor : IComponent
                     int c = memData[addr];
                     asciiVal.Append((c >= 32 && c < 128) ? Convert.ToChar(c) : '.');
                 }
+
                 ImGui.TextUnformatted(asciiVal.ToString());
             }
         }
-        
+
         ImGuiNative.ImGuiListClipper_destroy(clipper);
 
         ImGui.PopStyleVar(2);
@@ -233,25 +238,26 @@ public unsafe class MemoryEditor : IComponent
         ImGui.AlignTextToFramePadding();
         ImGui.PushItemWidth(50);
         //ImGui.PushAllowKeyboardFocus(true);
-        
+
         int rowsBackup = _rows;
         if (ImGui.DragInt("##rows", ref _rows, 0.2f, 4, 32, "%.0f rows"))
         {
             if (_rows <= 0) _rows = 4;
         }
-        
+
         //ImGui.PopAllowKeyboardFocus();
         ImGui.PopItemWidth();
-        
+
         ImGui.SameLine();
-        ImGui.Text($"Range {FixedHex(baseDisplayAddr, addrDigitsCount)}..{FixedHex(baseDisplayAddr + memSize - 1, addrDigitsCount)}");
-        
+        ImGui.Text(
+            $"Range {FixedHex(baseDisplayAddr, addrDigitsCount)}..{FixedHex(baseDisplayAddr + memSize - 1, addrDigitsCount)}");
+
         ImGui.SameLine();
         ImGui.PushItemWidth(70);
 
         var d2 = _addrInput[0].ToString();
-        if (ImGui.InputText("##addr", ref d2, (uint)_addrInput.Length, 
-            ImGuiInputTextFlags.CharsHexadecimal | ImGuiInputTextFlags.EnterReturnsTrue))
+        if (ImGui.InputText("##addr", ref d2, (uint)_addrInput.Length,
+                ImGuiInputTextFlags.CharsHexadecimal | ImGuiInputTextFlags.EnterReturnsTrue))
         {
             if (TryHexParse(_addrInput, out int gotoAddr))
             {
@@ -260,13 +266,14 @@ public unsafe class MemoryEditor : IComponent
                 {
                     _dataEditingAddr = gotoAddr;
                     _dataEditingTakeFocus = true;
-                    
+
                     // Scroll to the address
                     float scrollY = (gotoAddr / _rows) * lineHeight;
                     ImGui.SetScrollY(scrollY);
                 }
             }
         }
+
         ImGui.PopItemWidth();
 
         ImGui.SameLine();

@@ -8,7 +8,7 @@ public static class TimeManager
     private static readonly ConcurrentDictionary<string, TimeData> _timeData = new();
 
     public static IReadOnlyDictionary<string, TimeData> TimeData => _timeData;
-    
+
     public static void AddSample(string context, TimeSpan duration)
     {
         var timeData = _timeData.GetOrAdd(context, key => new TimeData(key));
@@ -58,7 +58,8 @@ public static class TimeManager
         return (result, elapsed);
     }
 
-    public static async Task<(T Result, TimeSpan Elapsed)> TimeFuncAsync<T>(Func<Task<T>> asyncFunc, string? context = null)
+    public static async Task<(T Result, TimeSpan Elapsed)> TimeFuncAsync<T>(Func<Task<T>> asyncFunc,
+        string? context = null)
     {
         var sw = Stopwatch.StartNew();
         var result = await asyncFunc();

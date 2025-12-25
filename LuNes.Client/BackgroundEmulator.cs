@@ -48,7 +48,7 @@ public class BackgroundEmulator : IDisposable
     {
         if (_emulationCts != null && !_emulationCts.IsCancellationRequested)
             return;
-        
+
         _emulationChannel = Channel.CreateUnbounded<Action>();
         _emulationCts = new CancellationTokenSource();
 

@@ -29,28 +29,28 @@ public class Ppu2C02Drawable : Ppu2C02, IDisposable
                 _screenTextureData[i] = _screenPalette[0x3F];
             }
         }
-        
+
         var screenImage = Raylib.GenImageColor(256, 240, _screenPalette[0x3F]);
         _screenTexture = Raylib.LoadTextureFromImage(screenImage);
         Raylib.UnloadImage(screenImage);
-        
+
         _nameTableTexture = new Texture2D[2];
         var nt1 = Raylib.GenImageColor(256, 240, _screenPalette[0x3F]);
         var nt2 = Raylib.GenImageColor(256, 240, _screenPalette[0x3F]);
-        
+
         _nameTableTexture[0] = Raylib.LoadTextureFromImage(nt1);
         _nameTableTexture[1] = Raylib.LoadTextureFromImage(nt2);
-        
+
         Raylib.UnloadImage(nt1);
         Raylib.UnloadImage(nt2);
-        
+
         var pt1 = Raylib.GenImageColor(128, 128, _screenPalette[0x3F]);
         var pt2 = Raylib.GenImageColor(128, 128, _screenPalette[0x3F]);
-        
+
         _patternTableTexture = new Texture2D[2];
         _patternTableTexture[0] = Raylib.LoadTextureFromImage(nt1);
         _patternTableTexture[1] = Raylib.LoadTextureFromImage(nt2);
-        
+
         Raylib.UnloadImage(pt1);
         Raylib.UnloadImage(pt2);
     }

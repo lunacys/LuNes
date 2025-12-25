@@ -12,7 +12,7 @@ public class ComponentManager
         {
             _namedComponents[name] = component;
         }
-        
+
         return component;
     }
 

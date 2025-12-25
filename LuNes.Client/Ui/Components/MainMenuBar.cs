@@ -11,9 +11,9 @@ public class MainMenuBar : IComponent
     private readonly Action _onToggleRun;
     private readonly Func<bool> _getRunState;
     private string _currentRomName = "";
-    
+
     public bool IsVisible { get; set; } = true;
-    
+
     public MainMenuBar(
         RomLoader romLoader,
         Func<bool> canLoadRom,
@@ -29,9 +29,11 @@ public class MainMenuBar : IComponent
         _onToggleRun = onToggleRun;
         _getRunState = getRunState;
     }
-    
-    public void Update(float deltaTime) { }
-    
+
+    public void Update(float deltaTime)
+    {
+    }
+
     public void Draw()
     {
         if (ImGui.BeginMainMenuBar())
@@ -42,37 +44,37 @@ public class MainMenuBar : IComponent
                 {
                     _romLoader.ShowFileDialog = true;
                 }
-                
+
                 ImGui.Separator();
-                
+
                 if (ImGui.MenuItem("Exit", "Alt+F4"))
                 {
                     Environment.Exit(0);
                 }
-                
+
                 ImGui.EndMenu();
             }
-            
+
             if (ImGui.BeginMenu("Emulation"))
             {
                 if (ImGui.MenuItem("Step", "Space", false, !_getRunState()))
                 {
                     _onStep();
                 }
-                
+
                 if (ImGui.MenuItem("Reset", "R"))
                 {
                     _onReset();
                 }
-                
+
                 if (ImGui.MenuItem(_getRunState() ? "Pause" : "Run", "A"))
                 {
                     _onToggleRun();
                 }
-                
+
                 ImGui.EndMenu();
             }
-            
+
             if (ImGui.BeginMenu("View"))
             {
                 ImGui.MenuItem("RAM Viewer", "", true);
@@ -81,24 +83,26 @@ public class MainMenuBar : IComponent
                 ImGui.MenuItem("Devices", "", true);
                 ImGui.EndMenu();
             }
-            
+
             ImGui.SameLine(ImGui.GetWindowWidth() - 200);
             ImGui.Text(_getRunState() ? "RUNNING" : "PAUSED");
-            
+
             if (!string.IsNullOrEmpty(_currentRomName))
             {
                 ImGui.SameLine();
                 ImGui.TextDisabled($"| {_currentRomName}");
             }
-            
+
             ImGui.EndMainMenuBar();
         }
     }
-    
+
     public void SetCurrentRom(string romName)
     {
         _currentRomName = Path.GetFileName(romName);
     }
-    
-    public void Resize(int width, int height) { }
+
+    public void Resize(int width, int height)
+    {
+    }
 }
