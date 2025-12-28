@@ -65,12 +65,12 @@ public class EmulatorSettings : IComponent
 
         ImGui.Text($"Target Speed: {_emulator.TargetClockSpeed:N0} Hz");
         ImGui.Text($"Actual Speed: {_emulator.ActualClockSpeed:N0} Hz");
-        ImGui.Text($"Ms per Cycle: {_emulator.MsPerCycle:F6} ms");
+        ImGui.Text($"Ms per Cycle: {_emulator.MsPerCycle:F4} ms");
 
         if (_emulator.ActualClockSpeed > 0)
         {
             double ratio = _emulator.ActualClockSpeed / _emulator.TargetClockSpeed * 100.0;
-            ImGui.Text($"Achieved: {ratio:F1}% of target");
+            ImGui.Text($"Achieved: {ratio:F1}%% of target");
 
             if (ratio < 95.0)
                 ImGui.TextColored(new System.Numerics.Vector4(1, 0.5f, 0, 1), "Warning: Running slower than target!");

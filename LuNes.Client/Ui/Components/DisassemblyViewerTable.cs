@@ -10,6 +10,7 @@ public class DisassemblyViewerTable : IComponent
     private List<(ushort Address, Cpu6502.DisassembledInstruction Instruction)> _sortedInstructions = new();
     
     private ushort _currentPc;
+    private ushort _prevPc;
     private int _scrollToIndex = -1;
     private string _searchText = "";
     
@@ -21,6 +22,7 @@ public class DisassemblyViewerTable : IComponent
         UpdateDisassembly();
         
         _currentPc = _bus.Cpu.Pc;
+        _prevPc = _bus.Cpu.PrevPc;
         _scrollToIndex = _sortedInstructions.FindIndex(x => x.Address == _currentPc);
     }
 
@@ -36,6 +38,7 @@ public class DisassemblyViewerTable : IComponent
     public void Update(float deltaTime)
     {
         _currentPc = _bus.Cpu.Pc;
+        _prevPc = _bus.Cpu.PrevPc;
     }
 
     public unsafe void Draw()
@@ -51,7 +54,7 @@ public class DisassemblyViewerTable : IComponent
         ImGui.SameLine();
         if (ImGui.Button("Jump to PC"))
         {
-            _scrollToIndex = _sortedInstructions.FindIndex(x => x.Address == _currentPc);
+            _scrollToIndex = _sortedInstructions.FindIndex(x => x.Address == _prevPc);
         }
         
         ImGui.SameLine();
@@ -65,7 +68,7 @@ public class DisassemblyViewerTable : IComponent
         ImGui.Separator();
         
         // Create table
-        if (ImGui.BeginTable("DisassemblyTable", 5, 
+        if (ImGui.BeginTable("DisassemblyTable", 6, 
                 ImGuiTableFlags.Borders | 
                 ImGuiTableFlags.RowBg | 
                 ImGuiTableFlags.ScrollY | 
@@ -77,6 +80,7 @@ public class DisassemblyViewerTable : IComponent
             ImGui.TableSetupColumn("Label", ImGuiTableColumnFlags.WidthFixed, 60);
             ImGui.TableSetupColumn("Instruction", ImGuiTableColumnFlags.WidthStretch);
             ImGui.TableSetupColumn("Mode", ImGuiTableColumnFlags.WidthFixed, 40);
+            ImGui.TableSetupColumn("Clock Cycles", ImGuiTableColumnFlags.WidthFixed, 40);
 
             ImGui.TableHeadersRow();
 
@@ -91,7 +95,7 @@ public class DisassemblyViewerTable : IComponent
                 for (int i = (*clipper).DisplayStart; i < (*clipper).DisplayEnd; i++)
                 {
                     var (address, instruction) = _sortedInstructions[i];
-                    bool isCurrent = address == _currentPc;
+                    bool isCurrent = address == _prevPc;
 
                     ImGui.TableNextRow();
 
@@ -128,6 +132,9 @@ public class DisassemblyViewerTable : IComponent
                     // Mode column
                     ImGui.TableNextColumn();
                     ImGui.TextDisabled($"{{{instruction.AddressingMode}}}");
+
+                    ImGui.TableNextColumn();
+                    ImGui.TextDisabled($"{instruction.ClockCycles}");
 
                     if (isCurrent)
                     {

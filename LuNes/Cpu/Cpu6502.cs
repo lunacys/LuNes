@@ -67,13 +67,15 @@ public partial class Cpu6502
     /// </summary>
     public ushort Pc = 0x0000;
 
+    public ushort PrevPc = 0x0000;
+
     public byte Fetched = 0;
     public ushort AddressAbsolute = 0;
     public ushort AddressRelative = 0;
     public byte Opcode = 0;
     public byte Cycles = 0;
 
-    public int ClockCount = 0;
+    public ulong ClockCount = 0;
 
     public void ConnectBus(IBus bus) => _bus = bus;
 
@@ -89,6 +91,7 @@ public partial class Cpu6502
     {
         if (Cycles == 0)
         {
+            PrevPc = Pc;
             Opcode = Read(Pc);
             
             SetFlag(Flags.Unused, 1);
@@ -116,6 +119,7 @@ public partial class Cpu6502
         var hi = Read((ushort)(AddressAbsolute + 1));
 
         Pc = (ushort)((hi << 8) | lo);
+        PrevPc = Pc;
 
         A = 0;
         X = 0;

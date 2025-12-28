@@ -82,7 +82,7 @@ public partial class Cpu6502
     }
 
     /// <summary>
-    /// Absolute 
+    /// Absolute.
     /// A full 16-bit address is loaded and used
     /// </summary>
     /// <returns></returns>

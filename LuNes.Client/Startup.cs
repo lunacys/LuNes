@@ -35,6 +35,7 @@ public class Startup : IDisposable
         //var dasm = _componentManager.Register(new DisassemblyViewer(_computer.Bus));
         var dasm2 = _componentManager.Register(new DisassemblyViewerTable(_computer.Bus));
         _componentManager.Register(new Profiler(_emulator));
+        _componentManager.Register(new CpuControls(_computer.Bus));
         var romLoader = _componentManager.Register(new RomLoader(bytes =>
         {
             _computer.Rom.Load(bytes);
@@ -73,11 +74,27 @@ public class Startup : IDisposable
             TimeManager.TimeAction(() => _emulator.Step(), "Emulator.Step");
         }
 
-        if (Raylib.IsKeyPressed(KeyboardKey.R))
+        if (Raylib.IsKeyPressed(KeyboardKey.C))
         {
             _emulator.Post(() =>
-                TimeManager.TimeAction(() => _computer.Bus.Reset(), "Computer.Reset")
+                TimeManager.TimeAction(() => _computer.Bus.Clock(), "Computer.Clock")
             );
+        }
+
+        if (Raylib.IsKeyPressed(KeyboardKey.R))
+        {
+            if (Raylib.IsKeyDown(KeyboardKey.LeftControl))
+            {
+                _emulator.Post(() =>
+                    TimeManager.TimeAction(() => _computer.Bus.Cpu.Reset(), "Computer.Bus.Cpu.Reset")
+                );
+            }
+            else
+            {
+                _emulator.Post(() =>
+                    TimeManager.TimeAction(() => _computer.Bus.Reset(), "Computer.Reset")
+                );
+            }
         }
 
         if (Raylib.IsKeyPressed(KeyboardKey.Q))

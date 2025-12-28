@@ -45,14 +45,19 @@ public class CpuStatus : IComponent
         DrawText(x + 280, y, "I", (cpu.Status & Cpu6502.Flags.DisableInterrupts) == 0 ? Color.Red : Color.Green);
         DrawText(x + 310, y, "Z", (cpu.Status & Cpu6502.Flags.Zero) == 0 ? Color.Red : Color.Green);
         DrawText(x + 340, y, "C", (cpu.Status & Cpu6502.Flags.CarryBit) == 0 ? Color.Red : Color.Green);
-
         // Draw registers
-        DrawText(x, y + lineHeight, $"PC: ${Helpers.Hex(cpu.Pc, 4)}");
-        DrawText(x, y + lineHeight * 2, $"A:  ${Helpers.Hex(cpu.A, 2)}   [{cpu.A}]");
-        DrawText(x, y + lineHeight * 3, $"X:  ${Helpers.Hex(cpu.X, 2)}   [{cpu.X}]");
-        DrawText(x, y + lineHeight * 4, $"Y:  ${Helpers.Hex(cpu.Y, 2)}   [{cpu.Y}]");
-        DrawText(x, y + lineHeight * 5, $"SP: ${Helpers.Hex(cpu.Stkp, 4)}");
-        DrawText(x, y + lineHeight * 6, $"Cycles: {cpu.Cycles}");
+        DrawText(x, y + lineHeight,      $"PC: ${Helpers.Hex(cpu.Pc, 4)} (${Helpers.Hex(cpu.PrevPc, 4)})");
+        DrawText(x, y + lineHeight * 2,  $"A:  ${Helpers.Hex(cpu.A, 2)}   [{cpu.A}]");
+        DrawText(x, y + lineHeight * 3,  $"X:  ${Helpers.Hex(cpu.X, 2)}   [{cpu.X}]");
+        DrawText(x, y + lineHeight * 4,  $"Y:  ${Helpers.Hex(cpu.Y, 2)}   [{cpu.Y}]");
+        DrawText(x, y + lineHeight * 5,  $"SP: ${Helpers.Hex(cpu.Stkp, 4)}");
+        DrawText(x, y + lineHeight * 6,  $"Cycles:     {cpu.Cycles}");
+        DrawText(x, y + lineHeight * 7,  $"Abs Addr:  ${Helpers.Hex(cpu.AddressAbsolute, 4)}");
+        DrawText(x, y + lineHeight * 8,  $"Rel Addr:  ${Helpers.Hex(cpu.AddressRelative, 4)}");
+        DrawText(x, y + lineHeight * 9,  $"Clk Cnt:    {cpu.ClockCount}");
+        DrawText(x, y + lineHeight * 10, $"Fetched:   ${Helpers.Hex(cpu.Fetched, 2)}");
+        DrawText(x, y + lineHeight * 11, $"Opcode:    ${Helpers.Hex(cpu.Opcode, 2)} ({cpu.Lookup[cpu.Opcode].Name})");
+        //DrawText(x, y + lineHeight * 12, $"Completed: {cpu.IsComplete()}");
     }
 
     private void DrawText(int x, int y, string text, Color color)

@@ -175,7 +175,18 @@ public unsafe class MemoryEditor : IComponent
                     }
                     else
                     {
+                        if (addr == _bus.Cpu.AddressAbsolute)
+                        {
+                            //ImGui.PushStyleColor(ImGuiCol.Text, new Vector4(0, 1, 0, 1));
+                        }
+                        
                         ImGui.Text(FixedHex(memData[addr], 2));
+                        
+                        if (addr == _bus.Cpu.AddressAbsolute)
+                        {
+                            //ImGui.PopStyleColor();
+                        }
+                        
                         if (_allowEdits && ImGui.IsItemHovered() && ImGui.IsMouseClicked(ImGuiMouseButton.Left))
                         {
                             _dataEditingTakeFocus = true;

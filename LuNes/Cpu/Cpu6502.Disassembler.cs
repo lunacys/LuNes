@@ -1,20 +1,25 @@
+using System.Runtime.InteropServices;
+
 namespace LuNes.Cpu;
 
 public partial class Cpu6502
 {
+    [StructLayout(LayoutKind.Sequential)]
     public readonly struct DisassembledInstruction(
         ushort address,
         byte[] bytes,
         string label,
         string instructionText,
         string addressingMode,
-        bool hasLabel)
+        bool hasLabel,
+        byte clockCycles)
     {
-        public readonly ushort Address = address;
         public readonly byte[] Bytes = bytes;
         public readonly string Label = label;
         public readonly string InstructionText = instructionText;
         public readonly string AddressingMode = addressingMode;
+        public readonly ushort Address = address;
+        public readonly byte ClockCycles = clockCycles;
         public readonly bool HasLabel = hasLabel;
 
         public override string ToString()
@@ -74,6 +79,7 @@ public partial class Cpu6502
             ushort lineAddr = (ushort)addr;
 
             byte opcode = _bus?.CpuRead(addr, true) ?? 0;
+            byte cycles = Lookup[opcode].Cycles;
             addr++;
 
             var instruction = Lookup[opcode];
@@ -196,7 +202,8 @@ public partial class Cpu6502
                 label,
                 instructionText,
                 addressingMode,
-                !string.IsNullOrEmpty(label)
+                !string.IsNullOrEmpty(label),
+                cycles
             );
         }
 
