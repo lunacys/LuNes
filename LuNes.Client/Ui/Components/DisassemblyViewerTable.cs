@@ -1,3 +1,4 @@
+using System.Numerics;
 using ImGuiNET;
 using LuNes.Cpu;
 
@@ -68,13 +69,14 @@ public class DisassemblyViewerTable : IComponent
         ImGui.Separator();
         
         // Create table
-        if (ImGui.BeginTable("DisassemblyTable", 6, 
+        if (ImGui.BeginTable("DisassemblyTable", 7, 
                 ImGuiTableFlags.Borders | 
                 ImGuiTableFlags.RowBg | 
                 ImGuiTableFlags.ScrollY | 
                 ImGuiTableFlags.Resizable))
         {
             // Setup columns
+            ImGui.TableSetupColumn("BP", ImGuiTableColumnFlags.WidthFixed, 40);
             ImGui.TableSetupColumn("Address", ImGuiTableColumnFlags.WidthFixed, 60);
             ImGui.TableSetupColumn("Bytes", ImGuiTableColumnFlags.WidthFixed, 80);
             ImGui.TableSetupColumn("Label", ImGuiTableColumnFlags.WidthFixed, 60);
@@ -95,14 +97,42 @@ public class DisassemblyViewerTable : IComponent
                 for (int i = (*clipper).DisplayStart; i < (*clipper).DisplayEnd; i++)
                 {
                     var (address, instruction) = _sortedInstructions[i];
-                    bool isCurrent = address == _prevPc;
+                    bool isCurrent = address == _currentPc;
 
                     ImGui.TableNextRow();
+                    ImGui.TableNextColumn();   // first column "BP"
 
-                    // Highlight current row
+                    var isBpSet = _bus.Breakpoints.Contains(address);
+                    bool toggled = false;
+
+                    // Draw a small 10x10 button/rect
+                    ImGui.PushStyleVar(ImGuiStyleVar.FramePadding, new Vector2(0, 0));
+                    ImGui.PushStyleVar(ImGuiStyleVar.ItemSpacing,  new Vector2(0, 0));
+
+                    Vector4 bpColor = isBpSet ? new Vector4(1, 0, 0, 1) : new Vector4(0.3f, 0.3f, 0.3f, 1);
+                    ImGui.PushStyleColor(ImGuiCol.Button, bpColor);
+                    ImGui.PushStyleColor(ImGuiCol.ButtonHovered, bpColor * 0.8f);
+
+                    var w = ImGui.GetTextLineHeight() - 2;
+                    if (ImGui.Button($"##bp{address}", new Vector2(w, w)))
+                        toggled = true;
+
+                    ImGui.PopStyleColor(2);
+                    ImGui.PopStyleVar(2);
+
+                    if (toggled)
+                    {
+                        if (isBpSet) _bus.Breakpoints.Remove(address);
+                        else         _bus.Breakpoints.Add(address);
+                    }
+                    
                     if (isCurrent)
                     {
                         ImGui.PushStyleColor(ImGuiCol.Text, new System.Numerics.Vector4(0, 1, 0, 1));
+                    }
+                    else if (isBpSet)
+                    {
+                        ImGui.PushStyleColor(ImGuiCol.Text, new System.Numerics.Vector4(1, 0, 0, 1));
                     }
 
                     // Address column
@@ -136,7 +166,7 @@ public class DisassemblyViewerTable : IComponent
                     ImGui.TableNextColumn();
                     ImGui.TextDisabled($"{instruction.ClockCycles}");
 
-                    if (isCurrent)
+                    if (isCurrent || isBpSet)
                     {
                         ImGui.PopStyleColor();
                     }

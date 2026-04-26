@@ -144,8 +144,7 @@ public unsafe class MemoryEditor : IComponent
                                     ImGuiInputTextFlags.NoHorizontalScroll |
                                     ImGuiInputTextFlags.CallbackAlways;
 
-                        var d = _dataInput[0].ToString();
-                        if (ImGui.InputText("##data", ref d, (uint)_dataInput.Length, flags,
+                        if (ImGui.InputText("##data", _dataInput, (uint)_dataInput.Length, flags,
                                 callback, (IntPtr)(&cursorPos)))
                         {
                             dataWrite = true;
@@ -175,16 +174,29 @@ public unsafe class MemoryEditor : IComponent
                     }
                     else
                     {
-                        if (addr == _bus.Cpu.AddressAbsolute)
+                        var changed = addr == _bus.Cpu.AddressAbsolute;
+                        var value = memData[addr];
+                        var isValueZero = value == 0;
+
+                        if (isValueZero)
                         {
-                            //ImGui.PushStyleColor(ImGuiCol.Text, new Vector4(0, 1, 0, 1));
+                            ImGui.PushStyleColor(ImGuiCol.Text, new Vector4(0.5f, 0.5f, 0.5f, 1));
+                        }
+                        if (changed)
+                        {
+                            ImGui.PushStyleColor(ImGuiCol.Text, new Vector4(0, 1, 0, 1));
                         }
                         
-                        ImGui.Text(FixedHex(memData[addr], 2));
+                        ImGui.Text(FixedHex(value, 2));
                         
-                        if (addr == _bus.Cpu.AddressAbsolute)
+                        if (changed)
                         {
-                            //ImGui.PopStyleColor();
+                            ImGui.PopStyleColor();
+                        }
+
+                        if (isValueZero)
+                        {
+                            ImGui.PopStyleColor();
                         }
                         
                         if (_allowEdits && ImGui.IsItemHovered() && ImGui.IsMouseClicked(ImGuiMouseButton.Left))
@@ -247,7 +259,7 @@ public unsafe class MemoryEditor : IComponent
 
         // Controls
         ImGui.AlignTextToFramePadding();
-        ImGui.PushItemWidth(50);
+        ImGui.PushItemWidth(100);
         //ImGui.PushAllowKeyboardFocus(true);
 
         int rowsBackup = _rows;
@@ -264,7 +276,7 @@ public unsafe class MemoryEditor : IComponent
             $"Range {FixedHex(baseDisplayAddr, addrDigitsCount)}..{FixedHex(baseDisplayAddr + memSize - 1, addrDigitsCount)}");
 
         ImGui.SameLine();
-        ImGui.PushItemWidth(70);
+        ImGui.PushItemWidth(100);
 
         var d2 = _addrInput[0].ToString();
         if (ImGui.InputText("##addr", ref d2, (uint)_addrInput.Length,

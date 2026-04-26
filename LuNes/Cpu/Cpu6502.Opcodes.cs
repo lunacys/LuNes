@@ -9,16 +9,31 @@ public partial class Cpu6502
     public byte Adc()
     {
         Fetch();
-        
+
+        if (GetFlag(Flags.DecimalMode) == 1)
+        {
+            // Decimal mode ADC
+            int al = (A & 0x0F) + (Fetched & 0x0F) + GetFlag(Flags.CarryBit);
+            int ah = (A >> 4) + (Fetched >> 4);
+            if (al > 9) { al -= 10; ah++; }
+            if (ah > 9) { ah -= 10; SetFlag(Flags.CarryBit, true); }
+            else       { SetFlag(Flags.CarryBit, false); }
+
+            int result = (ah << 4) | (al & 0x0F);
+            SetFlag(Flags.Zero, (result & 0xFF) == 0);
+            SetFlag(Flags.Negative, (result & 0x80) != 0);
+            // Overflow flag unchanged in decimal mode? usually not valid
+            A = (byte)(result & 0xFF);
+            return 1;
+        }
+
+        // Binary mode (existing)
         ushort temp = (ushort)(A + Fetched + GetFlag(Flags.CarryBit));
-        
         SetFlag(Flags.CarryBit, temp > 255);
         SetFlag(Flags.Zero, (temp & 0x00FF) == 0);
         SetFlag(Flags.Overflow, (byte)((~(A ^ Fetched) & (A ^ temp)) & 0x0080));
         SetFlag(Flags.Negative, (byte)(temp & 0x80));
-
         A = (byte)(temp & 0x00FF);
-        
         return 1;
     }
 
@@ -668,13 +683,35 @@ public partial class Cpu6502
     {
         Fetch();
 
-        ushort value = (ushort)(((ushort)Fetched) ^ 0x00FF);
+        if (GetFlag(Flags.DecimalMode) == 1)
+        {
+            // Decimal mode SBC (A - Fetched - (1‑C))
+            int val = A - Fetched - (1 - GetFlag(Flags.CarryBit));
+            if ((val & 0x0F) > 0x09) val -= 0x06;
+            if (val < 0) val -= 0x60;
+            if (val > 0x99) val -= 0x60;
+            if (val < 0)
+            {
+                SetFlag(Flags.CarryBit, false);
+                val += 0x100;
+            }
+            else
+            {
+                SetFlag(Flags.CarryBit, true);
+            }
+            A = (byte)(val & 0xFF);
+            SetFlag(Flags.Zero, A == 0);
+            SetFlag(Flags.Negative, (A & 0x80) != 0);
+            return 1;
+        }
 
-        ushort temp = (ushort)((ushort)A + value + (ushort)GetFlag(Flags.CarryBit));
-        SetFlag(Flags.CarryBit, (byte)(temp & 0xFF00));
-        SetFlag(Flags.Zero, ((temp & 0x00FF) == 0));
-        SetFlag(Flags.Overflow, (byte)((temp ^ (ushort)A) & (temp ^ value) & 0x0080));
-        SetFlag(Flags.Negative, (byte)(temp & 0x0080));
+        // Binary mode (existing)
+        ushort value = (ushort)(Fetched ^ 0x00FF);
+        ushort temp = (ushort)(A + value + GetFlag(Flags.CarryBit));
+        SetFlag(Flags.CarryBit, (temp & 0xFF00) != 0);
+        SetFlag(Flags.Zero, (temp & 0x00FF) == 0);
+        SetFlag(Flags.Overflow, (byte)((temp ^ A) & (temp ^ value) & 0x0080));
+        SetFlag(Flags.Negative, (byte)(temp & 0x80));
         A = (byte)(temp & 0x00FF);
         return 1;
     }

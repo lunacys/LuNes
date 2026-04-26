@@ -8,6 +8,8 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Deps", "Deps", "{466D92D8-B
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "rlImGui", "Dependencies\rlImGui-cs\rlImGui\rlImGui.csproj", "{94A89577-E30E-434C-9C81-EED6E28FBA01}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "LuNes.Serial", "LuNes.Serial\LuNes.Serial.csproj", "{6104B8E7-B253-4D62-BE10-925102CADA14}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -26,6 +28,10 @@ Global
 		{94A89577-E30E-434C-9C81-EED6E28FBA01}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{94A89577-E30E-434C-9C81-EED6E28FBA01}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{94A89577-E30E-434C-9C81-EED6E28FBA01}.Release|Any CPU.Build.0 = Release|Any CPU
+		{6104B8E7-B253-4D62-BE10-925102CADA14}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{6104B8E7-B253-4D62-BE10-925102CADA14}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{6104B8E7-B253-4D62-BE10-925102CADA14}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{6104B8E7-B253-4D62-BE10-925102CADA14}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(NestedProjects) = preSolution
 		{94A89577-E30E-434C-9C81-EED6E28FBA01} = {466D92D8-B085-4EE4-ABBF-95F0048DAEF3}

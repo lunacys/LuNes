@@ -12,7 +12,7 @@ static class Program
         Raylib.InitWindow(3600, 2000, "W65C02 Emulator");
         Raylib.SetTargetFPS(60);
 
-        rlImGui.Setup();
+        rlImGui.Setup(true, true);
 
         //UiScaler.SetScale(1.25f);
         //UiScaler.ApplyScale();
@@ -20,7 +20,7 @@ static class Program
         // var io = ImGui.GetIO();
         // io.Fonts.AddFontFromFileTTF("Content/Fonts/Silkscreen-Regular.ttf", 16);
         // io.Fonts.Build();
-
+        
         var io = ImGui.GetIO();
         io.ConfigFlags |= ImGuiConfigFlags.DockingEnable;
         io.ConfigWindowsMoveFromTitleBarOnly = true;
@@ -55,6 +55,7 @@ static class Program
         catch (Exception e)
         {
             Console.WriteLine($"FATAL ERROR: {e.Message}");
+            throw;
         }
         finally
         {

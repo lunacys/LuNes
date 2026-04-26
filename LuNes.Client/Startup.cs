@@ -30,12 +30,16 @@ public class Startup : IDisposable
         _componentManager.Register(new EmulatorSettings(_emulator));
         _componentManager.Register(new MemoryEditor(_computer.Bus));
         //ramViewer = _componentManager.Register(new RamViewer(_computer.Bus, _mainFont));
-        _componentManager.Register(new CpuStatus(_computer.Bus, _mainFont));
-        _componentManager.Register(new DeviceViewer(_computer, _mainFont));
+        //_componentManager.Register(new CpuStatus(_computer.Bus, _mainFont));
+        //_componentManager.Register(new DeviceViewer(_computer, _mainFont));
         //var dasm = _componentManager.Register(new DisassemblyViewer(_computer.Bus));
         var dasm2 = _componentManager.Register(new DisassemblyViewerTable(_computer.Bus));
         _componentManager.Register(new Profiler(_emulator));
-        _componentManager.Register(new CpuControls(_computer.Bus));
+        _componentManager.Register(new CpuControls(_computer.Bus, _emulator));
+        _componentManager.Register(new RomViewer(_computer));
+        _componentManager.Register(new VirtualButtons(_computer, _emulator));
+        _componentManager.Register(new ViaStatus(_computer));
+        _componentManager.Register(new LcdDisplay(_computer.Lcd, _computer.LcdInterface));
         var romLoader = _componentManager.Register(new RomLoader(bytes =>
         {
             _computer.Rom.Load(bytes);

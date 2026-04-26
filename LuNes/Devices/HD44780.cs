@@ -2,156 +2,319 @@ using System.Text;
 
 namespace LuNes.Devices;
 
-public class HD44780 : MemoryMappedDevice
-{
-    private byte[] _ddRam = new byte[80];  // Display Data RAM
-    private byte[] _cgRam = new byte[64];  // Character Generator RAM
-    
-    private int _cursorPosition;
-    private bool _displayOn = true;
-    private bool _cursorOn = false;
-    private bool _blinkOn = false;
-    
-    private byte _instructionRegister;
-    private bool _registerSelect;  // RS: false=instruction, true=data
-    private bool _readWrite;       // R/W: false=write, true=read
-    private bool _enable;          // Enable signal
-    
-    private Queue<byte> _dataBuffer = new();
-    
-    public HD44780(ushort baseAddress) : base(baseAddress, (ushort)(baseAddress + 0x03))
+    public class HD44780
     {
-        Reset();
-    }
-    
-    public void Reset()
-    {
-        _cursorPosition = 0;
-        _displayOn = true;
-        _cursorOn = false;
-        _blinkOn = false;
-        Array.Clear(_ddRam, 0, _ddRam.Length);
-        Array.Clear(_cgRam, 0, _cgRam.Length);
-        _dataBuffer.Clear();
-    }
-    
-    protected override byte OnRead(ushort address, bool isReadOnly)
-    {
-        byte reg = (byte)(address - StartAddress);
+        // Display RAM: 80 bytes (addresses 0x00-0x4F)
+        private byte[] _ddRam = new byte[128];
+        // Character Generator RAM: 64 bytes (8 characters × 8 bytes)
+        private byte[] _cgRam = new byte[64];
+
+        private int _cursorPos;      // current DDRAM/CGRAM address
+        private bool _displayOn = true;
+        private bool _cursorOn = false;
+        private bool _blinkOn = false;
+        private bool _entryModeInc = true;   // true = increment, false = decrement
+        private bool _entryModeShift = false;
         
-        switch (reg)
-        {
-            case 0x00: // Command/Status register
-                return ReadStatus();
-            case 0x01: // Data register
-                return ReadData();
-            default:
-                return 0xFF;
-        }
-    }
-    
-    protected override void OnWrite(ushort address, byte data)
-    {
-        byte reg = (byte)(address - StartAddress);
+        private bool _cgramMode = false;
+        private int _displayShift;
         
-        switch (reg)
-        {
-            case 0x00: // Command register
-                WriteCommand(data);
-                break;
-            case 0x01: // Data register
-                WriteData(data);
-                break;
-            case 0x02: // Control signals (simplified)
-                UpdateControlSignals(data);
-                break;
-        }
-    }
-    
-    private byte ReadStatus()
-    {
-        // Busy flag (bit 7) is always clear in this simplified emulation
-        // Address counter in lower 7 bits
-        return (byte)(_cursorPosition & 0x7F);
-    }
-    
-    private byte ReadData()
-    {
-        if (_cursorPosition < _ddRam.Length)
-            return _ddRam[_cursorPosition++];
-        return 0;
-    }
-    
-    private void WriteCommand(byte command)
-    {
-        if ((command & 0x80) != 0) // Set DDRAM address
-        {
-            _cursorPosition = command & 0x7F;
-        }
-        else if ((command & 0x40) != 0) // Set CGRAM address
-        {
-            _cursorPosition = (command & 0x3F) + 0x40;
-        }
-        else if ((command & 0x20) != 0) // Function set
-        {
-            // Ignored in this simple emulation
-        }
-        else if ((command & 0x10) != 0) // Cursor/display shift
-        {
-            // Ignored
-        }
-        else if ((command & 0x08) != 0) // Display on/off control
-        {
-            _displayOn = (command & 0x04) != 0;
-            _cursorOn = (command & 0x02) != 0;
-            _blinkOn = (command & 0x01) != 0;
-        }
-        else if ((command & 0x04) != 0) // Entry mode set
-        {
-            // Ignored
-        }
-        else if ((command & 0x02) != 0) // Return home
-        {
-            _cursorPosition = 0;
-        }
-        else if ((command & 0x01) != 0) // Clear display
-        {
-            Array.Clear(_ddRam, 0, _ddRam.Length);
-            _cursorPosition = 0;
-        }
-    }
-    
-    private void WriteData(byte data)
-    {
-        if (_cursorPosition < _ddRam.Length)
-        {
-            _ddRam[_cursorPosition] = data;
-            _cursorPosition++;
-        }
-    }
-    
-    private void UpdateControlSignals(byte data)
-    {
-        _registerSelect = (data & 0x01) != 0;
-        _readWrite = (data & 0x02) != 0;
-        _enable = (data & 0x04) != 0;
+        public int CursorPos => _cursorPos;
+        public bool DisplayOn => _displayOn;
+        public bool CursorOn => _cursorOn;
+        public bool BlinkOn => _blinkOn;
+        public bool EntryModeInc => _entryModeInc;
+        public bool EntryModeShift => _entryModeShift;
+        public int DisplayShift => _displayShift;
+
+        public int BusyCycles { get; private set; }
         
-        if (_enable)
+        public byte[] DdRam => _ddRam;
+
+        // Standard 5×8 LCD font (characters 0x20–0x7F)
+        public static readonly byte[,] FontRom = new byte[256, 8];
+
+        private static readonly byte[,] _asciiFont7 = new byte[96, 7]
         {
-            // Process on rising edge of enable
-            // Simplified: just process immediately
+            { 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00 }, //  32 ' '
+            { 0x04, 0x04, 0x04, 0x04, 0x00, 0x00, 0x04 }, //  33 '!'
+            { 0x0A, 0x0A, 0x0A, 0x00, 0x00, 0x00, 0x00 }, //  34 '"'
+            { 0x0A, 0x0A, 0x1F, 0x0A, 0x1F, 0x0A, 0x0A }, //  35 '#'
+            { 0x04, 0x0F, 0x14, 0x0E, 0x05, 0x1E, 0x04 }, //  36 '$'
+            { 0x18, 0x19, 0x02, 0x04, 0x08, 0x13, 0x03 }, //  37 '%'
+            { 0x0C, 0x12, 0x14, 0x08, 0x15, 0x12, 0x0D }, //  38 '&'
+            { 0x0C, 0x04, 0x08, 0x00, 0x00, 0x00, 0x00 }, //  39 '''
+            { 0x02, 0x04, 0x08, 0x08, 0x08, 0x04, 0x02 }, //  40 '('
+            { 0x08, 0x04, 0x02, 0x02, 0x02, 0x04, 0x08 }, //  41 ')'
+            { 0x00, 0x04, 0x15, 0x0E, 0x15, 0x04, 0x00 }, //  42 '*'
+            { 0x00, 0x04, 0x04, 0x1F, 0x04, 0x04, 0x00 }, //  43 '+'
+            { 0x00, 0x00, 0x00, 0x00, 0x0C, 0x04, 0x08 }, //  44 ','
+            { 0x00, 0x00, 0x00, 0x1F, 0x00, 0x00, 0x00 }, //  45 '-'
+            { 0x00, 0x00, 0x00, 0x00, 0x00, 0x0C, 0x0C }, //  46 '.'
+            { 0x00, 0x01, 0x02, 0x04, 0x08, 0x10, 0x00 }, //  47 '/'
+            // ---- 0-9 ----
+            { 0x0E, 0x11, 0x13, 0x15, 0x19, 0x11, 0x0E }, //  48 '0'
+            { 0x04, 0x0C, 0x04, 0x04, 0x04, 0x04, 0x0E }, //  49 '1'
+            { 0x0E, 0x11, 0x01, 0x02, 0x04, 0x08, 0x1F }, //  50 '2'
+            { 0x0E, 0x11, 0x01, 0x06, 0x01, 0x11, 0x0E }, //  51 '3'
+            { 0x02, 0x06, 0x0A, 0x12, 0x1F, 0x02, 0x02 }, //  52 '4'
+            { 0x1F, 0x10, 0x1E, 0x01, 0x01, 0x11, 0x0E }, //  53 '5'
+            { 0x06, 0x08, 0x10, 0x1E, 0x11, 0x11, 0x0E }, //  54 '6'
+            { 0x1F, 0x01, 0x02, 0x04, 0x08, 0x08, 0x08 }, //  55 '7'
+            { 0x0E, 0x11, 0x11, 0x0E, 0x11, 0x11, 0x0E }, //  56 '8'
+            { 0x0E, 0x11, 0x11, 0x0F, 0x01, 0x02, 0x0C }, //  57 '9'
+            { 0x00, 0x0C, 0x0C, 0x00, 0x0C, 0x0C, 0x00 }, //  58 ':'
+            { 0x00, 0x0C, 0x0C, 0x00, 0x0C, 0x04, 0x08 }, //  59 ';'
+            { 0x02, 0x04, 0x08, 0x10, 0x08, 0x04, 0x02 }, //  60 '<'
+            { 0x00, 0x00, 0x1F, 0x00, 0x1F, 0x00, 0x00 }, //  61 '='
+            { 0x08, 0x04, 0x02, 0x01, 0x02, 0x04, 0x08 }, //  62 '>'
+            { 0x0E, 0x11, 0x01, 0x02, 0x04, 0x00, 0x04 }, //  63 '?'
+            { 0x0E, 0x11, 0x17, 0x15, 0x17, 0x10, 0x0F }, //  64 '@'
+            // ---- A-Z ----
+            { 0x04, 0x0A, 0x11, 0x11, 0x1F, 0x11, 0x11 }, //  65 'A'
+            { 0x1E, 0x11, 0x11, 0x1E, 0x11, 0x11, 0x1E }, //  66 'B'
+            { 0x0E, 0x11, 0x10, 0x10, 0x10, 0x11, 0x0E }, //  67 'C'
+            { 0x1C, 0x12, 0x11, 0x11, 0x11, 0x12, 0x1C }, //  68 'D'
+            { 0x1F, 0x10, 0x10, 0x1E, 0x10, 0x10, 0x1F }, //  69 'E'
+            { 0x1F, 0x10, 0x10, 0x1E, 0x10, 0x10, 0x10 }, //  70 'F'
+            { 0x0E, 0x11, 0x10, 0x17, 0x11, 0x11, 0x0F }, //  71 'G'
+            { 0x11, 0x11, 0x11, 0x1F, 0x11, 0x11, 0x11 }, //  72 'H'
+            { 0x0E, 0x04, 0x04, 0x04, 0x04, 0x04, 0x0E }, //  73 'I'
+            { 0x07, 0x02, 0x02, 0x02, 0x02, 0x12, 0x0C }, //  74 'J'
+            { 0x11, 0x12, 0x14, 0x18, 0x14, 0x12, 0x11 }, //  75 'K'
+            { 0x10, 0x10, 0x10, 0x10, 0x10, 0x10, 0x1F }, //  76 'L'
+            { 0x11, 0x1B, 0x15, 0x15, 0x11, 0x11, 0x11 }, //  77 'M'
+            { 0x11, 0x11, 0x19, 0x15, 0x13, 0x11, 0x11 }, //  78 'N'
+            { 0x0E, 0x11, 0x11, 0x11, 0x11, 0x11, 0x0E }, //  79 'O'
+            { 0x1E, 0x11, 0x11, 0x1E, 0x10, 0x10, 0x10 }, //  80 'P'
+            { 0x0E, 0x11, 0x11, 0x11, 0x15, 0x12, 0x0D }, //  81 'Q'
+            { 0x1E, 0x11, 0x11, 0x1E, 0x14, 0x12, 0x11 }, //  82 'R'
+            { 0x0E, 0x11, 0x10, 0x0E, 0x01, 0x11, 0x0E }, //  83 'S'
+            { 0x1F, 0x04, 0x04, 0x04, 0x04, 0x04, 0x04 }, //  84 'T'
+            { 0x11, 0x11, 0x11, 0x11, 0x11, 0x11, 0x0E }, //  85 'U'
+            { 0x11, 0x11, 0x11, 0x11, 0x0A, 0x04, 0x00 }, //  86 'V'
+            { 0x11, 0x11, 0x11, 0x15, 0x15, 0x1B, 0x11 }, //  87 'W'
+            { 0x11, 0x11, 0x0A, 0x04, 0x0A, 0x11, 0x11 }, //  88 'X'
+            { 0x11, 0x11, 0x0A, 0x04, 0x04, 0x04, 0x04 }, //  89 'Y'
+            { 0x1F, 0x01, 0x02, 0x04, 0x08, 0x10, 0x1F }, //  90 'Z'
+            { 0x0E, 0x08, 0x08, 0x08, 0x08, 0x08, 0x0E }, //  91 '['
+            { 0x00, 0x10, 0x08, 0x04, 0x02, 0x01, 0x00 }, //  92 '\'
+            { 0x0E, 0x02, 0x02, 0x02, 0x02, 0x02, 0x0E }, //  93 ']'
+            { 0x04, 0x0A, 0x11, 0x00, 0x00, 0x00, 0x00 }, //  94 '^'
+            { 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x1F }, //  95 '_'
+            { 0x08, 0x04, 0x02, 0x00, 0x00, 0x00, 0x00 }, //  96 '`'
+            // ---- a-z ----
+            { 0x00, 0x00, 0x0E, 0x01, 0x0F, 0x11, 0x0F }, //  97 'a'
+            { 0x10, 0x10, 0x16, 0x19, 0x11, 0x11, 0x1E }, //  98 'b'
+            { 0x00, 0x00, 0x0E, 0x10, 0x10, 0x11, 0x0E }, //  99 'c'
+            { 0x01, 0x01, 0x0D, 0x13, 0x11, 0x11, 0x0F }, // 100 'd'
+            { 0x00, 0x00, 0x0E, 0x11, 0x1F, 0x10, 0x0E }, // 101 'e'
+            { 0x06, 0x09, 0x08, 0x1C, 0x08, 0x08, 0x08 }, // 102 'f'
+            { 0x00, 0x0F, 0x11, 0x11, 0x0F, 0x01, 0x0E }, // 103 'g'
+            { 0x10, 0x10, 0x16, 0x19, 0x11, 0x11, 0x11 }, // 104 'h'
+            { 0x04, 0x00, 0x0C, 0x04, 0x04, 0x04, 0x0E }, // 105 'i'
+            { 0x02, 0x00, 0x06, 0x02, 0x02, 0x12, 0x0C }, // 106 'j'
+            { 0x10, 0x10, 0x12, 0x14, 0x18, 0x14, 0x12 }, // 107 'k'
+            { 0x0C, 0x04, 0x04, 0x04, 0x04, 0x04, 0x0E }, // 108 'l'
+            { 0x00, 0x00, 0x1A, 0x15, 0x15, 0x15, 0x15 }, // 109 'm'
+            { 0x00, 0x00, 0x16, 0x19, 0x11, 0x11, 0x11 }, // 110 'n'
+            { 0x00, 0x00, 0x0E, 0x11, 0x11, 0x11, 0x0E }, // 111 'o'
+            { 0x00, 0x00, 0x1E, 0x11, 0x1E, 0x10, 0x10 }, // 112 'p'
+            { 0x00, 0x00, 0x0D, 0x13, 0x0F, 0x01, 0x01 }, // 113 'q'
+            { 0x00, 0x00, 0x16, 0x19, 0x10, 0x10, 0x10 }, // 114 'r'
+            { 0x00, 0x00, 0x0E, 0x10, 0x0E, 0x01, 0x1E }, // 115 's'
+            { 0x08, 0x08, 0x1C, 0x08, 0x08, 0x09, 0x06 }, // 116 't'
+            { 0x00, 0x00, 0x11, 0x11, 0x11, 0x13, 0x0D }, // 117 'u'
+            { 0x00, 0x00, 0x11, 0x11, 0x0A, 0x04, 0x00 }, // 118 'v'
+            { 0x00, 0x00, 0x11, 0x15, 0x15, 0x1B, 0x11 }, // 119 'w'
+            { 0x00, 0x00, 0x11, 0x0A, 0x04, 0x0A, 0x11 }, // 120 'x'
+            { 0x00, 0x00, 0x11, 0x11, 0x0F, 0x01, 0x0E }, // 121 'y'
+            { 0x00, 0x00, 0x1F, 0x02, 0x04, 0x08, 0x1F }, // 122 'z'
+            { 0x02, 0x04, 0x04, 0x08, 0x04, 0x04, 0x02 }, // 123 '{'
+            { 0x04, 0x04, 0x04, 0x04, 0x04, 0x04, 0x04 }, // 124 '|'
+            { 0x08, 0x04, 0x04, 0x02, 0x04, 0x04, 0x08 }, // 125 '}'
+            { 0x00, 0x04, 0x02, 0x1F, 0x02, 0x04, 0x00 }, // 126 '~'
+            { 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00 } // 127 DEL
+        };
+        
+        public byte ReadDDRam(int address)
+        {
+            if ((address >= 0x00 && address <= 0x27) ||
+                (address >= 0x40 && address <= 0x67))
+                return _ddRam[address];
+            return 0x20;   // blank for unused areas
+        }
+
+        static HD44780()
+        {
+            for (int c = 0; c < 96; c++)
+            {
+                for (int row = 0; row < 7; row++)
+                    FontRom[c + 32, row] = _asciiFont7[c, row];
+                // row 7 stays 0 (cursor underline not used)
+            }
+        }
+
+        public void WriteCommand(byte cmd)
+        {
+            // Determine busy time
+            if ((cmd & 0xFC) == 0x00 || cmd == 0x01) // clear / home
+                BusyCycles = 3040;
+            else
+                BusyCycles = 74;
+
+            // Decode command
+            if ((cmd & 0x80) != 0)                 // Set DDRAM address
+            {
+                _cursorPos = cmd & 0x7F;
+                _cgramMode = false;
+            }
+            else if ((cmd & 0x40) != 0)            // Set CGRAM address
+            {
+                _cursorPos = (cmd & 0x3F) + 0x40;
+                _cgramMode = true;
+            }
+            else if ((cmd & 0x20) != 0)     // Function set (ignore)
+                ;
+            else if ((cmd & 0x10) != 0)     // Cursor/display shift
+            {
+                bool displayShift = (cmd & 0x08) != 0;
+                bool rightShift   = (cmd & 0x04) != 0;
+
+                if (displayShift)
+                {
+                    // Display shift right: offset = (offset + 39) % 40
+                    // Display shift left:  offset = (offset + 1)  % 40
+                    _displayShift = rightShift
+                        ? (_displayShift + 39) % 40
+                        : (_displayShift + 1) % 40;
+                }
+                else
+                {
+                    // Cursor move within DDRAM (already correct in your code)
+                    // ... keep the existing cursor move code ...
+                    int addr = _cursorPos;
+                    if (addr < 0x50)
+                    {
+                        if (rightShift)
+                        {
+                            if (addr == 0x27) addr = 0x40;
+                            else if (addr == 0x67) addr = 0x00;
+                            else addr++;
+                        }
+                        else
+                        {
+                            if (addr == 0x40) addr = 0x27;
+                            else if (addr == 0x00) addr = 0x67;
+                            else addr--;
+                        }
+                        _cursorPos = addr;
+                    }
+                }
+            }
+            else if ((cmd & 0x08) != 0)     // Display ON/OFF
+            {
+                _displayOn  = (cmd & 0x04) != 0;
+                _cursorOn   = (cmd & 0x02) != 0;
+                _blinkOn    = (cmd & 0x01) != 0;
+            }
+            else if ((cmd & 0x04) != 0)     // Entry mode set
+            {
+                _entryModeInc   = (cmd & 0x02) != 0;
+                _entryModeShift = (cmd & 0x01) != 0;
+            }
+            else if ((cmd & 0x02) != 0)            // Return home
+            {
+                _cursorPos = 0;
+                _cgramMode = false;
+            }
+            else if ((cmd & 0x01) != 0)             // Clear display
+            {
+                for (int i = 0x00; i <= 0x27; i++) _ddRam[i] = 0x20;
+                for (int i = 0x40; i <= 0x67; i++) _ddRam[i] = 0x20;
+                _cursorPos = 0;
+                _displayShift = 0;        // also reset display shift
+                _cgramMode = false;
+            }
+        }
+
+        public void WriteData(byte data)
+        {
+            BusyCycles = 43;
+
+            if (!_cgramMode)
+            {
+                // Allow writes to valid DDRAM addresses only
+                if ((_cursorPos >= 0x00 && _cursorPos <= 0x27) ||
+                    (_cursorPos >= 0x40 && _cursorPos <= 0x67))
+                {
+                    _ddRam[_cursorPos] = data;
+                    if (_entryModeInc)
+                    {
+                        if (_cursorPos == 0x27)
+                            _cursorPos = 0x40;
+                        else if (_cursorPos == 0x67)
+                            _cursorPos = 0x00;
+                        else
+                            _cursorPos++;
+                    }
+                    else
+                    {
+                        if (_cursorPos == 0x40)
+                            _cursorPos = 0x27;
+                        else if (_cursorPos == 0x00)
+                            _cursorPos = 0x67;
+                        else
+                            _cursorPos--;
+                    }
+                }
+            }
+            else
+            {
+                int addr = _cursorPos - 0x40;
+                if (addr < 64)
+                    _cgRam[addr] = data;
+                _cursorPos = (addr + 1) % 64 + 0x40;
+            }
+        }
+
+        public void UpdateBusy()
+        {
+            if (BusyCycles > 0)
+                BusyCycles--;
+        }
+
+        public bool IsBusy => BusyCycles > 0;
+
+        // Get the 8‑byte pixel pattern for a character code
+        public byte[] GetCharPattern(byte code)
+        {
+            if (code <= 7)            // CGRAM
+            {
+                byte[] pattern = new byte[8];
+                for (int i = 0; i < 8; i++)
+                    pattern[i] = _cgRam[code * 8 + i];
+                return pattern;
+            }
+            else if (code >= 0x20 && code <= 0x7F) // ROM
+            {
+                byte[] pattern = new byte[8];
+                for (int i = 0; i < 8; i++)
+                    pattern[i] = FontRom[code, i];
+                return pattern;
+            }
+            else return new byte[8];   // blank
+        }
+
+        // Returns the two‑line display as plain text (for debug)
+        public string GetDisplayString()
+        {
+            var sb = new StringBuilder();
+            for (int i = 0; i < 16; i++)
+                sb.Append((char)(_ddRam[i] & 0x7F));
+            sb.AppendLine();
+            for (int i = 64; i < 80; i++)
+                sb.Append((char)(_ddRam[i] & 0x7F));
+            return sb.ToString();
         }
     }
-    
-    public string GetDisplayString()
-    {
-        var sb = new StringBuilder();
-        for (int i = 0; i < 32; i++)
-        {
-            if (i == 16) sb.AppendLine();
-            char c = (char)_ddRam[i];
-            sb.Append(c >= 32 && c <= 126 ? c : ' ');
-        }
-        return sb.ToString();
-    }
-}

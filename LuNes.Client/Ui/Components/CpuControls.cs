@@ -9,14 +9,17 @@ public class CpuControls : IComponent
     public bool IsVisible { get; set; } = true;
 
     private SimpleBus _bus;
+    private BackgroundEmulator _emulator;
 
     private bool _c, _z, _i, _d, _b, _u, _v, _n;
+    private bool _isRunning;
 
     private int _addressToWrite;
 
-    public CpuControls(SimpleBus bus)
+    public CpuControls(SimpleBus bus, BackgroundEmulator emulator)
     {
         _bus = bus;
+        _emulator = emulator;
     }
 
     public void Update(float deltaTime)
@@ -52,6 +55,10 @@ public class CpuControls : IComponent
         }
         Shortcut("Space");
         HelpMarker("Proceed one whole instruction");
+        ImGui.SameLine();
+        
+        if (ImGui.Checkbox("Is Running", ref _emulator.RunEmulation))
+        { }
 
         if (ImGui.Button("Reset Bus", new Vector2(140, 32)))
         {
@@ -89,6 +96,7 @@ public class CpuControls : IComponent
         Shortcut("W");
         HelpMarker("Non-maskable Interrupt Request. Same as regular Interrupt Request, but cannot be disabled.");
 
+        ImGui.Separator();
         
         ImGui.BeginDisabled();
         CpuFlag(ref _c, "C", "Carry Bit"); ImGui.SameLine();
@@ -100,6 +108,93 @@ public class CpuControls : IComponent
         CpuFlag(ref _n, "N", "Negative"); 
         ImGui.EndDisabled();
         
+        ImGui.Separator();
+
+        if (ImGui.BeginTable("Registers", 2,
+                ImGuiTableFlags.Borders |
+                ImGuiTableFlags.RowBg |
+                ImGuiTableFlags.ScrollY |
+                ImGuiTableFlags.Resizable))
+        {
+            ImGui.TableSetupColumn("Register", ImGuiTableColumnFlags.WidthFixed, 60);
+            ImGui.TableSetupColumn("Value", ImGuiTableColumnFlags.WidthStretch);
+            
+            ImGui.TableHeadersRow();
+            
+            ImGui.TableNextColumn();
+            ImGui.Text("PC");
+            ImGui.TableNextColumn();
+            ImGui.Text($"0x{_bus.Cpu.Pc:X4} ({_bus.Cpu.Pc})");
+            ImGui.TableNextRow();
+            
+            ImGui.TableNextColumn();
+            ImGui.Text("Prev PC");
+            ImGui.TableNextColumn();
+            ImGui.Text($"0x{_bus.Cpu.PrevPc:X4} ({_bus.Cpu.PrevPc})");
+            ImGui.TableNextRow();
+            
+            ImGui.TableNextColumn();
+            ImGui.Text("A");
+            ImGui.TableNextColumn();
+            ImGui.Text($"0x{_bus.Cpu.A:X2} ({_bus.Cpu.A})");
+            ImGui.TableNextRow();
+            
+            ImGui.TableNextColumn();
+            ImGui.Text("X");
+            ImGui.TableNextColumn();
+            ImGui.Text($"0x{_bus.Cpu.X:X2} ({_bus.Cpu.X})");
+            ImGui.TableNextRow();
+            
+            ImGui.TableNextColumn();
+            ImGui.Text("Y");
+            ImGui.TableNextColumn();
+            ImGui.Text($"0x{_bus.Cpu.Y:X2} ({_bus.Cpu.Y})");
+            ImGui.TableNextRow();
+            
+            ImGui.TableNextColumn();
+            ImGui.Text("SP");
+            ImGui.TableNextColumn();
+            ImGui.Text($"0x{_bus.Cpu.Stkp:X4} ({_bus.Cpu.Stkp})");
+            ImGui.TableNextRow();
+            
+            ImGui.TableNextColumn();
+            ImGui.Text("Cycles");
+            ImGui.TableNextColumn();
+            ImGui.Text($"{_bus.Cpu.Cycles} cycles");
+            ImGui.TableNextRow();
+            
+            ImGui.TableNextColumn();
+            ImGui.Text("Absolute Addr");
+            ImGui.TableNextColumn();
+            ImGui.Text($"0x{_bus.Cpu.AddressAbsolute:X4} ({_bus.Cpu.AddressAbsolute})");
+            ImGui.TableNextRow();
+            
+            ImGui.TableNextColumn();
+            ImGui.Text("Relative Addr");
+            ImGui.TableNextColumn();
+            ImGui.Text($"0x{_bus.Cpu.AddressRelative:X4} ({_bus.Cpu.AddressRelative})");
+            ImGui.TableNextRow();
+            
+            ImGui.TableNextColumn();
+            ImGui.Text("Clock Count");
+            ImGui.TableNextColumn();
+            ImGui.Text($"{_bus.Cpu.ClockCount}");
+            ImGui.TableNextRow();
+            
+            ImGui.TableNextColumn();
+            ImGui.Text("Fetched");
+            ImGui.TableNextColumn();
+            ImGui.Text($"0x{_bus.Cpu.Fetched:X2} ({_bus.Cpu.AddressAbsolute})");
+            ImGui.TableNextRow();
+            
+            ImGui.TableNextColumn();
+            ImGui.Text("Opcode");
+            ImGui.TableNextColumn();
+            ImGui.Text($"0x{_bus.Cpu.Opcode:X2} ({_bus.Cpu.Lookup[_bus.Cpu.Opcode].Name})");
+            
+            ImGui.EndTable();
+        }
+
         ImGui.End();
     }
 

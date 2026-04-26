@@ -93,6 +93,7 @@ public class BackgroundEmulator : IDisposable
             do
             {
                 _computer.Bus.Clock();
+                _computer.LcdInterface.Clock();
             } while (!_computer.Bus.Cpu.IsComplete());
         }, "Emulator.Clock");
     }
@@ -146,12 +147,19 @@ public class BackgroundEmulator : IDisposable
                     int cyclesThisIteration = 0;
                     while (accumulatedTime >= msPerCycle && RunEmulation)
                     {
-                        TimeManager.TimeAction(() => _computer.Bus.Clock(), "Emulator.Clock");
+                        TimeManager.TimeAction(() =>
+                        {
+                            _computer.Bus.Clock();
+                            _computer.LcdInterface.Clock();
+                        }, "Emulator.Clock");
 
                         cyclesThisIteration++;
                         accumulatedTime -= msPerCycle;
 
                         _cycleCount++;
+
+                        if (_computer.Bus.Breakpoints.Contains(_computer.Bus.Cpu.Pc))
+                            RunEmulation = false;
 
                         if (cyclesThisIteration > 100000)
                         {

@@ -50,7 +50,7 @@ public class RomLoader : IComponent
             ImGui.SameLine();
             ImGui.Text($"Directory: {_currentDirectory}");
 
-            ImGui.BeginChild("##FileList", new System.Numerics.Vector2(400, 300));
+            ImGui.BeginChild("##FileList");
 
             foreach (var file in _romFiles)
             {

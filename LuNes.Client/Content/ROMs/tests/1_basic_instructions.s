@@ -15,7 +15,7 @@ reset:
     txa             ; X -> A
     tay             ; A -> Y (should be $AA)
     tya             ; Y -> A
-    
+
     ; Test 3: Stack operations
     ldx #$ff
     txs             ; Set stack pointer

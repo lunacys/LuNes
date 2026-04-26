@@ -1,0 +1,344 @@
+using System.IO.Ports;
+
+namespace LuNes.Serial;
+
+
+public class SerialClient : IDisposable
+{
+    private const int DefaultBaudRate = 115200;
+    private const int DefaultTimeOut = 5000;
+    private const int MaxAttempts = 5;
+
+    private readonly SerialPort _serialPort;
+    private bool _isDisposed;
+
+    public SerialClient()
+        : this(null, DefaultBaudRate)
+    {
+    }
+
+    public SerialClient(string? portName, int baudRate = DefaultBaudRate)
+    {
+        _serialPort = new SerialPort(portName ?? FirstPortName, baudRate)
+        {
+            ReadTimeout = DefaultTimeOut,
+            WriteTimeout = DefaultTimeOut
+        };
+    }
+
+    private static string? FirstPortName =>
+        SerialPort.GetPortNames()
+            .OrderByDescending(s => s.StartsWith("/dev/tty"))
+            .FirstOrDefault();
+
+    public void Open()
+    {
+        _serialPort.Open();
+    }
+
+    public void Close()
+    {
+        _serialPort.Close();
+    }
+
+    public TextWriter? Out { get; set; }
+
+    public string PortName
+    {
+        get => _serialPort.PortName;
+        set => _serialPort.PortName = value;
+    }
+
+    public int BaudRate
+    {
+        get => _serialPort.BaudRate;
+        set => _serialPort.BaudRate = value;
+    }
+
+    public int Timeout
+    {
+        get => _serialPort.ReadTimeout;
+        set
+        {
+            _serialPort.ReadTimeout = value;
+            _serialPort.WriteTimeout = value;
+        }
+    }
+
+    public void UploadImage(BinaryImage image, int? address = null)
+    {
+        CheckImage(image, address);
+        address ??= image.LoadAddress;
+        
+        for (var i = 0; i < image.Length; i += 32)
+        {
+            var pageLength = 32;
+
+            if (image.Length - i < pageLength)
+                pageLength = image.Length - i;
+
+            SendCommand($"writeprom 0x{address.Value + i:X4} {ToHex(image.Data, i, pageLength)}", true, out _);
+        }
+    }
+
+    public void UploadImageToRam(BinaryImage image, int? address = null, bool setJumpVectors = true)
+    {
+        CheckImage(image, address);
+        
+        DisableProcessor();
+        
+        address ??= image.LoadAddress;
+
+        for (int i = 0; i < image.Length; i += 32)
+        {
+            int len = Math.Min(32, image.Length - i);
+
+            for (int j = 0; j < len; j++)
+                SendCommand($"poke 0x{address + i + j:X4} 0x{image[i + j]:X2}", true, out _);
+            Thread.Sleep(2);
+        }
+
+        if (setJumpVectors)
+        {
+            Poke(0x0200, 0x00);
+            Poke(0x0201, 0x20);
+        }
+        
+        EnableProcessor();
+        Reset();
+    }
+
+    public string Peek(int address)
+    {
+        if (address < 0 || address >= 0xFFFF)
+            throw new ArgumentOutOfRangeException(nameof(address), "Invalid address");
+        
+        SendCommand($"peek 0x{address:X4}", true, out var response);
+        return response.Replace("200 OK - ", "");
+    }
+
+    public int Poke(int address, int data)
+    {
+        if (address < 0 || address >= 0xFFFF)
+            throw new ArgumentOutOfRangeException(nameof(address), "Invalid address");
+        
+        if (data < 0 || data > 0xFF)
+            throw new ArgumentOutOfRangeException(nameof(data), "Data takes more than 8 bytes.");
+        
+        return SendCommand($"poke 0x{address:X4} 0x{data:X2}", true, out _);
+    }
+
+    public void DisableProcessor()
+    {
+        SendCommand("disableProcessor", true, out _);
+    }
+
+    public void EnableProcessor()
+    {
+        SendCommand("enableProcessor", true, out _);
+    }
+    
+
+    public BinaryImage DownloadImage(int address, int length)
+    {
+        if (address is < 0 or > 0xffff)
+            throw new ArgumentOutOfRangeException(nameof(address));
+
+        if (length <= 0 || address + length - 1 > 0xffff)
+            throw new ArgumentOutOfRangeException(nameof(length));
+
+        SendCommand($"readprom 0x{address:X4} {length}", true, out _);
+
+        var result = new BinaryImage(address, length);
+
+        for (var i = 0; i < length; i += 16)
+        {
+            var pageLength = 16;
+
+            if (length - i < pageLength)
+                pageLength = length - i;
+
+            var pageString = _serialPort.ReadLine();
+
+            Out?.WriteLine(pageString);
+
+            var parts = pageString.Split([' ', ':', '\r', '\n', '\t'], StringSplitOptions.RemoveEmptyEntries);
+
+            if (parts.Length < pageLength + 1 || parts.Length > 17)
+                throw new SerialClientException($"The programmer responded unexpectedly. The response was: {pageString}");
+
+            var pageAddress = Convert.ToInt32(parts[0], 16);
+
+            if (pageAddress != address + i)
+                throw new SerialClientException($"The programmer did not responded at the expected address of ${address + i:x4}. The response was: {pageString}");
+
+            for (var j = 0; j < pageLength; j++)
+            {
+                var b = Convert.ToInt32(parts[j + 1], 16);
+
+                if (b is < 0 or > 255)
+                    throw new SerialClientException($"The programmer did not responded with a single byte. The response was: {pageString}");
+
+                result[i + j] = (byte)b;
+            }
+        }
+
+        return result;
+    }
+
+    public void Reset()
+    {
+        SendCommand("Reset", true, out _);
+    }
+
+    private int SendCommand(string command, bool throwIfNotSuccessful, out string response)
+    {
+        WaitForCommandPrompt();
+
+        _serialPort.WriteLine(command);
+
+        var echo = _serialPort.ReadLine().Trim('\r');
+
+        Out?.WriteLine(echo);
+
+        if (echo != command)
+            throw new SerialClientException("The programmer didn't echo the command correctly");
+
+        response = _serialPort.ReadLine().Trim('\r');
+
+        Out?.WriteLine(response);
+
+        if (string.IsNullOrWhiteSpace(response))
+            throw new SerialClientException("The programmer responded with an empty line");
+
+        var responseCode = ParseResponseCode(response);
+
+        if (responseCode == 0)
+            throw new SerialClientException("The programmer did not respond with an expected response code.");
+
+        if (responseCode is >= 200 and <= 299)
+            return responseCode;
+
+        if (throwIfNotSuccessful)
+            throw new SerialClientException($"The programmer response code did not indicate success. ({response})");
+
+        return responseCode;
+    }
+
+    private void CheckImage(BinaryImage image, int? address)
+    {
+        ArgumentNullException.ThrowIfNull(image);
+
+        address ??= image.LoadAddress;
+        
+        switch (address)
+        {
+            case null:
+                throw new ArgumentNullException(nameof(address));
+
+            case < 0:
+                throw new ArgumentOutOfRangeException(nameof(address), "The load address can not be negative");
+        }
+        
+        if (address + image.Length - 1 > 0xffff)
+        {
+            throw new ArgumentOutOfRangeException(nameof(address),
+                $"The ROM image is too large ({image.Length} bytes) to be loaded at the specified address (0x{address:x4}).");
+        }
+    }
+
+    private static int ParseResponseCode(string response)
+    {
+        if (string.IsNullOrEmpty(response))
+            return 0;
+
+        var firstSpace = response.IndexOf(' ');
+
+        if (0 >= firstSpace || firstSpace >= response.Length - 1)
+            return 0;
+
+        var code = response[..firstSpace];
+
+        if (!code.All(char.IsDigit) || !int.TryParse(code, out var result))
+            return 0;
+
+        return result is >= 100 and < 600 ? result : 0;
+    }
+
+    private void WaitForCommandPrompt()
+    {
+        var readTimeout = _serialPort.ReadTimeout;
+
+        try
+        {
+            _serialPort.ReadTimeout = 1000;
+
+            for (var attempt = 0; ; attempt++)
+            {
+                try
+                {
+                    do
+                    {
+                        var input = _serialPort.ReadTo("> ");
+
+                        Out?.Write(input);
+                        Out?.Write("> ");
+                    }
+                    while (_serialPort.BytesToRead > 0);
+
+                    return;
+                }
+                catch (TimeoutException ex)
+                {
+                    if (attempt == MaxAttempts)
+                        throw new SerialClientException(
+                            "Timed out while waiting for a command prompt from the programmer.", ex);
+
+                    _serialPort.WriteLine(string.Empty);
+                }
+            }
+        }
+        finally
+        {
+            _serialPort.ReadTimeout = readTimeout;
+        }
+    }
+
+    private static string ToHex(byte[] bytes, int startAt = 0, int length = -1)
+    {
+        if (length == -1)
+            length = bytes.Length - startAt;
+
+        var c = new char[length * 2];
+
+        for (var i = 0; i < length; i++)
+        {
+            var nibble = bytes[startAt + i] >> 4;
+
+            c[i * 2] = (char)(55 + nibble + (((nibble - 10) >> 31) & -7));
+
+            nibble = bytes[startAt + i] & 0xF;
+            c[i * 2 + 1] = (char)(55 + nibble + (((nibble - 10) >> 31) & -7));
+        }
+
+        return new string(c);
+    }
+
+    protected virtual void Dispose(bool disposing)
+    {
+        if (_isDisposed)
+            return;
+
+        if (disposing)
+            _serialPort.Dispose();
+
+        _isDisposed = true;
+    }
+
+    public void Dispose()
+    {
+        Dispose(true);
+
+        GC.SuppressFinalize(this);
+    }
+}

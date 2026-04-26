@@ -1,0 +1,29 @@
+$8000 a9 aa      lda #$aa
+$8002 8d 00 02   sta $0200
+$8005 a2 bb      ldx #$bb
+$8007 8e 01 02   stx $0201
+$800a a0 cc      ldy #$cc
+$800c 8c 02 02   sty $0202
+$800f aa         tax
+$8010 8a         txa
+$8011 a8         tay
+$8012 98         tya
+$8013 a2 ff      ldx #$ff
+$8015 9a         txs
+$8016 a9 55      lda #$55
+$8018 48         pha
+$8019 a9 00      lda #$00
+$801b 68         pla
+$801c a9 01      lda #$01
+$801e 8d 03 02   sta $0203
+$8021 ee 03 02   inc $0203
+$8024 ce 03 02   dec $0203
+$8027 18         clc
+$8028 38         sec
+$8029 58         cli
+$802a 78         sei
+$802b d8         cld
+$802c f8         sed
+$802d 4c 00 80   jmp $8000
+
+$fffc 00 80 00 00               .€..

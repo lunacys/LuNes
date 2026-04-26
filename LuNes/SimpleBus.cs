@@ -14,6 +14,8 @@ public class SimpleBus : IBus
     public ushort RomEnd { get; } = 0xFFFF;
     
     public byte[] Ram => _ram;
+    
+    public HashSet<ushort> Breakpoints = new();
 
     public SimpleBus(int ramSize = 0x8000)
     {
@@ -38,6 +40,8 @@ public class SimpleBus : IBus
         
         foreach (var device in _devices)
             device.Reset();
+        
+        Breakpoints.Clear();
     }
 
     public void Clock()

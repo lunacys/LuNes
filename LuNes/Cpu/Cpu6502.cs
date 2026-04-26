@@ -155,8 +155,8 @@ public partial class Cpu6502
             // Then Push the status register to the stack
             SetFlag(Flags.Break, 0);
             SetFlag(Flags.Unused, 1);
-            SetFlag(Flags.DisableInterrupts, 1);
             Write((ushort)(0x0100 + Stkp), (byte)Status);
+            SetFlag(Flags.DisableInterrupts, 1);
             Stkp--;
 
             // Read new program counter location from fixed address

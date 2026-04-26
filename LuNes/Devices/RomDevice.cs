@@ -5,6 +5,7 @@ public class RomDevice : MemoryMappedDevice
     private readonly byte[] _data;
 
     public const int MaxSize = 0x10000 - 0x8000;
+    public byte[] Data => _data;
 
     public RomDevice(ushort startAddress, byte[] data) 
         : base(startAddress, (ushort)(startAddress + data.Length - 1))

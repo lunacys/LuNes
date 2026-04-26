@@ -8,6 +8,7 @@ public class Computer
     public W65C22 Via { get; }
     public HD44780 Lcd { get; }
     public RomDevice Rom { get; }
+    public LcdInterface LcdInterface { get; }
     
     public Computer(byte[]? romData)
     {
@@ -22,12 +23,13 @@ public class Computer
         // LCD: $7000-$7003 (HD44780)
         // ROM: $8000-$FFFF (32KB)
         
-        Via = new W65C22(0x6000);
-        Lcd = new HD44780(0x7000);
+        Via = new W65C22(Bus, 0x6000);
+        Lcd = new HD44780();
         Rom = new RomDevice(0x8000, romData);
+
+        LcdInterface = new LcdInterface(Via, Lcd);
         
         Bus.ConnectDevice(Via);
-        Bus.ConnectDevice(Lcd);
         Bus.ConnectDevice(Rom);
         
         // Set reset vector
